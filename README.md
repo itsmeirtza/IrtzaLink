@@ -103,7 +103,19 @@ npm install
 npm start
 ```
 
-### 4. Firebase Deployment
+### 4. Vercel Deployment (Recommended for Web Panel)
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy to Vercel
+npm run deploy
+
+# Or use Vercel CLI directly
+vercel --prod
+```
+
+### 5. Firebase Deployment (Alternative)
 ```bash
 # Deploy Firestore rules and functions
 firebase deploy --only firestore:rules,functions
@@ -123,9 +135,10 @@ The APK will be available at: `flutter_app/build/app/outputs/flutter-apk/app-rel
 
 ## 🌐 Live Demo
 
-- **Web Panel**: `https://your-project.web.app`
-- **Profile Example**: `https://your-project.web.app/username`
-- **Admin Dashboard**: `https://your-project.web.app/admin`
+- **Web Panel (Vercel)**: `https://irtzalink.vercel.app`
+- **Profile Example**: `https://irtzalink.vercel.app/username`
+- **Admin Dashboard**: `https://irtzalink.vercel.app/admin`
+- **Firebase Hosting**: `https://your-project.web.app` (if using Firebase hosting)
 
 ## 🔧 Configuration
 

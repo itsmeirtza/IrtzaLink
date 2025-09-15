@@ -1,0 +1,38 @@
+{
+  "name": "irtzalink",
+  "version": "1.0.0",
+  "description": "Personal Link Management System - Complete solution with Flutter app, React web panel, and Firebase backend",
+  "main": "index.js",
+  "scripts": {
+    "install:web": "cd web_panel && npm install",
+    "install:firebase": "cd firebase/functions && npm install",
+    "build:web": "cd web_panel && npm run build",
+    "start:web": "cd web_panel && npm start",
+    "build": "npm run install:web && npm run build:web",
+    "dev": "npm run start:web",
+    "deploy": "vercel --prod"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itsmeirtza/IrtzaLink.git"
+  },
+  "keywords": [
+    "linktree",
+    "personal-links",
+    "qr-code",
+    "flutter",
+    "react",
+    "firebase",
+    "link-management"
+  ],
+  "author": "Irtza <irtzajutt2005@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/itsmeirtza/IrtzaLink/issues"
+  },
+  "homepage": "https://github.com/itsmeirtza/IrtzaLink#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
