@@ -1,0 +1,18 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded square -->
+  <rect width="32" height="32" rx="6" fill="white"/>
+  
+  <!-- Chain link icon -->
+  <g transform="translate(4, 8)">
+    <!-- First link -->
+    <path d="M8 4C8 2.34315 6.65685 1 5 1H3C1.34315 1 0 2.34315 0 4V8C0 9.65685 1.34315 11 3 11H5C6.65685 11 8 9.65685 8 8V7" 
+          stroke="#3b82f6" stroke-width="2" stroke-linecap="round" fill="none"/>
+    
+    <!-- Second link -->
+    <path d="M16 8C16 9.65685 14.6569 11 13 11H11C9.34315 11 8 9.65685 8 8V4C8 2.34315 9.34315 1 11 1H13C14.6569 1 16 2.34315 16 4V5" 
+          stroke="#3b82f6" stroke-width="2" stroke-linecap="round" fill="none"/>
+    
+    <!-- Connection line -->
+    <line x1="8" y1="6" x2="8" y2="6" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

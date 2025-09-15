@@ -1,0 +1,86 @@
+name: irtzalink
+description: Personal link management system - Flutter app for IrtzaLink
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=2.19.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase dependencies
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.9.0
+  cloud_firestore: ^4.8.5
+  firebase_storage: ^11.2.6
+  firebase_analytics: ^10.4.5
+  
+  # Google Sign In
+  google_sign_in: ^6.1.4
+  
+  # UI and Navigation
+  cupertino_icons: ^1.0.2
+  flutter_svg: ^2.0.7
+  cached_network_image: ^3.2.3
+  image_picker: ^1.0.2
+  
+  # QR Code
+  qr_flutter: ^4.1.0
+  qr_code_scanner: ^1.0.1
+  
+  # Sharing and URL launching
+  share_plus: ^7.1.0
+  url_launcher: ^6.1.12
+  
+  # Storage and persistence
+  shared_preferences: ^2.2.0
+  
+  # HTTP requests
+  http: ^1.1.0
+  
+  # State management
+  provider: ^6.0.5
+  
+  # Utils
+  uuid: ^3.0.7
+  intl: ^0.18.1
+  
+  # Icons
+  font_awesome_flutter: ^10.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/logos/
+    
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700

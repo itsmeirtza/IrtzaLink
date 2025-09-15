@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection rules
+    match /users/{userId} {
+      // Users can read and write their own data
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow public read access to active profiles
+      allow read: if resource.data.isActive == true;
+      
+      // Admin can read/write all users
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // Admin collection (list of admin user IDs)
+    match /admins/{adminId} {
+      allow read: if request.auth != null && request.auth.uid == adminId;
+    }
+    
+    // Analytics collection
+    match /analytics/{analyticsId} {
+      // Allow creation of analytics entries
+      allow create: if true;
+      
+      // Users can read their own analytics
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Admins can read all analytics
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // Reports collection for abuse reports
+    match /reports/{reportId} {
+      // Anyone can create a report
+      allow create: if true;
+      
+      // Only admins can read reports
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // Username reservations to prevent conflicts
+    match /usernames/{username} {
+      // Allow reading to check availability
+      allow read: if true;
+      
+      // Only allow creation/update by the user who owns it
+      allow create, update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+  }
+}
