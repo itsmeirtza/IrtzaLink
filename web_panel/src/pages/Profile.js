@@ -39,8 +39,29 @@ const Profile = ({ user }) => {
   });
 
   useEffect(() => {
-    fetchUserData();
-  }, [user]);
+    if (user && user.uid) {
+      // Reset state when user changes
+      setLoading(true);
+      setUserData(null);
+      setFormData({
+        displayName: '',
+        username: '',
+        bio: '',
+        photoURL: '',
+        socialLinks: Object.fromEntries(
+          socialPlatforms.map(platform => [platform.key, ''])
+        ),
+        contactInfo: {
+          phone: '',
+          email: '',
+          website: ''
+        },
+        theme: 'dark'
+      });
+      
+      fetchUserData();
+    }
+  }, [user?.uid]);
 
   const fetchUserData = async () => {
     try {

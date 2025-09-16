@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserData, searchUsersByUsername, sendFriendRequestNew, getUserRelationshipStatus, getUserAnalytics } from '../services/firebase';
+import { getUserData, searchUsersByUsername, getUserAnalytics } from '../services/firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';
 import LiveAnalytics from '../components/LiveAnalytics';
 import FriendsManager from '../components/FriendsManager';
+import FollowButton from '../components/FollowButton';
 import QRCode from 'react-qr-code';
 import toast from 'react-hot-toast';
 import { 
@@ -31,7 +32,6 @@ const Dashboard = ({ user }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [friendRequestLoading, setFriendRequestLoading] = useState({});
 
   useEffect(() => {
     if (user && user.uid) {
@@ -161,32 +161,6 @@ const Dashboard = ({ user }) => {
     }, 300);
   };
 
-  const handleSendFriendRequest = async (targetUserId, event) => {
-    event.stopPropagation();
-    setFriendRequestLoading(prev => ({ ...prev, [targetUserId]: true }));
-    
-    try {
-      const result = await sendFriendRequestNew(user.uid, targetUserId);
-      if (result.success) {
-        if (result.becameFriends) {
-          toast.success('You are now friends!');
-        } else {
-          toast.success('Friend request sent!');
-        }
-        // Refresh search results to show updated status
-        if (searchQuery.trim()) {
-          handleSearch(searchQuery.trim());
-        }
-      } else {
-        toast.error(result.error || 'Failed to send friend request');
-      }
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      toast.error('Failed to send friend request');
-    } finally {
-      setFriendRequestLoading(prev => ({ ...prev, [targetUserId]: false }));
-    }
-  };
 
   if (loading) {
     return (
@@ -313,20 +287,24 @@ const Dashboard = ({ user }) => {
                           )}
                         </div>
                         
-                        {/* Friend Request Button */}
-                        {foundUser.uid !== user.uid && (
-                          <button
-                            onClick={(e) => handleSendFriendRequest(foundUser.uid, e)}
-                            disabled={friendRequestLoading[foundUser.uid]}
-                            className="ml-2 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-500 border border-blue-300 hover:border-blue-400 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                          >
-                            {friendRequestLoading[foundUser.uid] ? (
-                              <div className="animate-spin w-3 h-3 border border-blue-500 border-t-transparent rounded-full"></div>
-                            ) : (
-                              'Add Friend'
-                            )}
-                          </button>
-                        )}
+                        {/* Follow Button */}
+                        <div className="ml-2">
+                          <FollowButton
+                            currentUser={user}
+                            targetUser={{
+                              uid: foundUser.uid,
+                              username: foundUser.username,
+                              displayName: foundUser.displayName,
+                              photoURL: foundUser.photoURL
+                            }}
+                            onFollowChange={() => {
+                              // Refresh search results to show updated status
+                              if (searchQuery.trim()) {
+                                handleSearch(searchQuery.trim());
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -861,4 +861,270 @@ export const trackQRCodeScan = async (userId, source = 'qr_code') => {
   }
 };
 
+// Instagram-like Follow System
+
+// Follow a user
+export const followUser = async (followerId, followingId) => {
+  try {
+    if (followerId === followingId) {
+      return { success: false, error: 'Cannot follow yourself' };
+    }
+
+    // Check if already following
+    const followerData = await getUserData(followerId);
+    if (followerData.success && followerData.data.following?.includes(followingId)) {
+      return { success: false, error: 'Already following this user' };
+    }
+
+    // Update follower's following list
+    await updateDoc(doc(db, 'users', followerId), {
+      following: arrayUnion(followingId),
+      updatedAt: new Date()
+    });
+
+    // Update following user's followers list
+    await updateDoc(doc(db, 'users', followingId), {
+      followers: arrayUnion(followerId),
+      updatedAt: new Date()
+    });
+
+    // Create notification
+    await createNotification(
+      followingId,
+      followerId,
+      'follow',
+      'started following you'
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error following user:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Unfollow a user
+export const unfollowUser = async (followerId, followingId) => {
+  try {
+    // Update follower's following list
+    await updateDoc(doc(db, 'users', followerId), {
+      following: arrayRemove(followingId),
+      updatedAt: new Date()
+    });
+
+    // Update following user's followers list
+    await updateDoc(doc(db, 'users', followingId), {
+      followers: arrayRemove(followerId),
+      updatedAt: new Date()
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error unfollowing user:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Check if user is following another user
+export const isFollowing = async (followerId, followingId) => {
+  try {
+    const userData = await getUserData(followerId);
+    if (userData.success && userData.data.following) {
+      return { success: true, isFollowing: userData.data.following.includes(followingId) };
+    }
+    return { success: true, isFollowing: false };
+  } catch (error) {
+    console.error('Error checking follow status:', error);
+    return { success: false, error: error.message, isFollowing: false };
+  }
+};
+
+// Get user's followers
+export const getUserFollowers = async (userId, limitCount = 50) => {
+  try {
+    const userData = await getUserData(userId);
+    if (userData.success && userData.data.followers) {
+      const followerIds = userData.data.followers.slice(0, limitCount);
+      
+      const followers = await Promise.all(
+        followerIds.map(async (followerId) => {
+          const followerData = await getUserData(followerId);
+          if (followerData.success) {
+            return {
+              uid: followerId,
+              username: followerData.data.username,
+              displayName: followerData.data.displayName,
+              photoURL: followerData.data.photoURL,
+              bio: followerData.data.bio
+            };
+          }
+          return null;
+        })
+      );
+      
+      return { success: true, data: followers.filter(Boolean) };
+    }
+    return { success: true, data: [] };
+  } catch (error) {
+    console.error('Error getting followers:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get user's following
+export const getUserFollowing = async (userId, limitCount = 50) => {
+  try {
+    const userData = await getUserData(userId);
+    if (userData.success && userData.data.following) {
+      const followingIds = userData.data.following.slice(0, limitCount);
+      
+      const following = await Promise.all(
+        followingIds.map(async (followingId) => {
+          const followingData = await getUserData(followingId);
+          if (followingData.success) {
+            return {
+              uid: followingId,
+              username: followingData.data.username,
+              displayName: followingData.data.displayName,
+              photoURL: followingData.data.photoURL,
+              bio: followingData.data.bio
+            };
+          }
+          return null;
+        })
+      );
+      
+      return { success: true, data: following.filter(Boolean) };
+    }
+    return { success: true, data: [] };
+  } catch (error) {
+    console.error('Error getting following:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get follow counts
+export const getFollowCounts = async (userId) => {
+  try {
+    const userData = await getUserData(userId);
+    if (userData.success) {
+      const followersCount = userData.data.followers?.length || 0;
+      const followingCount = userData.data.following?.length || 0;
+      
+      return {
+        success: true,
+        followersCount,
+        followingCount
+      };
+    }
+    return { success: true, followersCount: 0, followingCount: 0 };
+  } catch (error) {
+    console.error('Error getting follow counts:', error);
+    return { success: false, error: error.message, followersCount: 0, followingCount: 0 };
+  }
+};
+
+// Check if two users are mutual followers (friends)
+export const areMutualFollowers = async (userId1, userId2) => {
+  try {
+    const [user1Data, user2Data] = await Promise.all([
+      getUserData(userId1),
+      getUserData(userId2)
+    ]);
+    
+    if (user1Data.success && user2Data.success) {
+      const user1Following = user1Data.data.following || [];
+      const user1Followers = user1Data.data.followers || [];
+      
+      // Check if user1 follows user2 AND user2 follows user1
+      const user1FollowsUser2 = user1Following.includes(userId2);
+      const user2FollowsUser1 = user1Followers.includes(userId2);
+      
+      return {
+        success: true,
+        areMutual: user1FollowsUser2 && user2FollowsUser1,
+        user1FollowsUser2,
+        user2FollowsUser1
+      };
+    }
+    
+    return { success: false, areMutual: false };
+  } catch (error) {
+    console.error('Error checking mutual follow status:', error);
+    return { success: false, error: error.message, areMutual: false };
+  }
+};
+
+// Get mutual followers (friends) for chatting
+export const getMutualFollowers = async (userId, limitCount = 50) => {
+  try {
+    const userData = await getUserData(userId);
+    if (!userData.success) {
+      return { success: true, data: [] };
+    }
+    
+    const following = userData.data.following || [];
+    const followers = userData.data.followers || [];
+    
+    // Find mutual followers (people who follow each other)
+    const mutualFollowerIds = following.filter(followingId => 
+      followers.includes(followingId)
+    ).slice(0, limitCount);
+    
+    if (mutualFollowerIds.length === 0) {
+      return { success: true, data: [] };
+    }
+    
+    // Get details of mutual followers
+    const mutualFollowers = await Promise.all(
+      mutualFollowerIds.map(async (mutualId) => {
+        const mutualData = await getUserData(mutualId);
+        if (mutualData.success) {
+          return {
+            uid: mutualId,
+            username: mutualData.data.username,
+            displayName: mutualData.data.displayName,
+            photoURL: mutualData.data.photoURL,
+            bio: mutualData.data.bio
+          };
+        }
+        return null;
+      })
+    );
+    
+    return { success: true, data: mutualFollowers.filter(Boolean) };
+  } catch (error) {
+    console.error('Error getting mutual followers:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get follow relationship status
+export const getFollowRelationship = async (currentUserId, targetUserId) => {
+  try {
+    if (currentUserId === targetUserId) {
+      return { success: true, relationship: 'self' };
+    }
+    
+    const mutualCheck = await areMutualFollowers(currentUserId, targetUserId);
+    
+    if (mutualCheck.success) {
+      if (mutualCheck.areMutual) {
+        return { success: true, relationship: 'friends' }; // Both follow each other
+      } else if (mutualCheck.user1FollowsUser2) {
+        return { success: true, relationship: 'following' }; // You follow them
+      } else if (mutualCheck.user2FollowsUser1) {
+        return { success: true, relationship: 'follower' }; // They follow you
+      } else {
+        return { success: true, relationship: 'none' }; // No relationship
+      }
+    }
+    
+    return { success: false, relationship: 'none' };
+  } catch (error) {
+    console.error('Error getting follow relationship:', error);
+    return { success: false, error: error.message, relationship: 'none' };
+  }
+};
+
 export default app;

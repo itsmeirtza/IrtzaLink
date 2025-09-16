@@ -67,25 +67,16 @@ const ChatManager = ({ user, isOpen, onClose }) => {
   const fetchFriends = async () => {
     setLoading(true);
     try {
-      const userResult = await getUserData(user.uid);
-      if (userResult.success && userResult.data.friends) {
-        const friendIds = userResult.data.friends;
-        
-        // Get details of friend users
-        const friendDetails = await Promise.all(
-          friendIds.map(async (friendId) => {
-            const userDetails = await getUserData(friendId);
-            if (userDetails.success) {
-              return {
-                id: friendId,
-                ...userDetails.data
-              };
-            }
-            return null;
-          })
-        );
-        
-        setChatUsers(friendDetails.filter(Boolean));
+      const { getMutualFollowers } = await import('../services/firebase');
+      const result = await getMutualFollowers(user.uid, 50);
+      
+      if (result.success) {
+        // Convert to chat user format
+        const chatUsersList = result.data.map(user => ({
+          id: user.uid,
+          ...user
+        }));
+        setChatUsers(chatUsersList);
       } else {
         setChatUsers([]);
       }
@@ -202,10 +193,10 @@ const ChatManager = ({ user, isOpen, onClose }) => {
               <div className="p-8 text-center">
                 <UsersIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  No friends to chat with
+                  No one to chat with
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Add friends to start chatting
+                  Follow users to start chatting
                 </p>
               </div>
             )}
