@@ -586,6 +586,22 @@ export const markAllNotificationsAsRead = async (userId) => {
   }
 };
 
+// Test notification creation (for debugging)
+export const createTestNotification = async (userId) => {
+  try {
+    await createNotification(
+      userId,
+      userId, // Self notification for testing
+      'profile_visit',
+      'This is a test notification to verify the system is working'
+    );
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating test notification:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Add notification creation to existing functions
 export const trackProfileVisit = async (visitorId, visitedUserId) => {
   try {

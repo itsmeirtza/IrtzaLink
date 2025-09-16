@@ -8,7 +8,8 @@ import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
   CheckIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon as BellIconSolid } from '@heroicons/react/24/solid';
 
@@ -21,7 +22,15 @@ const NotificationCenter = ({ user, onNotificationClick }) => {
   useEffect(() => {
     if (user && user.uid) {
       fetchNotifications();
-      // Set up real-time listener here if needed
+      
+      // Set up periodic refresh for notifications (every 30 seconds)
+      const interval = setInterval(() => {
+        if (user && user.uid) {
+          fetchNotifications();
+        }
+      }, 30000);
+      
+      return () => clearInterval(interval);
     } else {
       // Clear notifications when user logs out
       setNotifications([]);
@@ -31,16 +40,23 @@ const NotificationCenter = ({ user, onNotificationClick }) => {
   }, [user?.uid]);
 
   const fetchNotifications = async () => {
+    if (!user || !user.uid) return;
+    
     setLoading(true);
     try {
       const result = await getUserNotifications(user.uid, 20);
       if (result.success) {
-        setNotifications(result.data);
-        const unread = result.data.filter(n => !n.read).length;
+        setNotifications(result.data || []);
+        const unread = (result.data || []).filter(n => !n.read).length;
         setUnreadCount(unread);
+        console.log(`Fetched ${result.data?.length || 0} notifications, ${unread} unread`);
+      } else {
+        console.error('Failed to fetch notifications:', result.error);
+        // Don't clear existing notifications on error, keep showing what we have
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      // Don't clear notifications on error
     } finally {
       setLoading(false);
     }
@@ -150,9 +166,18 @@ const NotificationCenter = ({ user, onNotificationClick }) => {
           <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-40 max-h-96 overflow-hidden">
             {/* Header */}
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Notifications
-              </h3>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Notifications
+                </h3>
+                <button
+                  onClick={fetchNotifications}
+                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Refresh notifications"
+                >
+                  <ArrowPathIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}

@@ -43,8 +43,8 @@ class UserDataManager {
       if (item) {
         const storageData = JSON.parse(item);
         
-        // Check if data is still valid (keep for 24 hours for better persistence)
-        const isStale = Date.now() - storageData.timestamp > 86400000; // 24 hours
+        // Check if data is still valid (keep for 7 days for better persistence)
+        const isStale = Date.now() - storageData.timestamp > 604800000; // 7 days
         
         return {
           data: storageData.data,
@@ -256,6 +256,10 @@ class UserDataManager {
     sensitiveKeys.forEach(key => {
       localStorage.removeItem(key);
     });
+    
+    // Remove from memory cache but keep localStorage data
+    const cacheKey = this.getCacheKey(userId);
+    this.cache.delete(cacheKey);
     
     // Keep profile data, follows, followers cached for better UX
     console.log('Keeping user profile and follow data cached for faster re-login');

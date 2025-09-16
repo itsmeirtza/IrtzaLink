@@ -74,65 +74,82 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Only update if this is a different user or first time
-        if (!user || user.uid !== firebaseUser.uid) {
-          try {
-            // Use UserDataManager for better data persistence and caching
-            const result = await userDataManager.getUserDataCached(firebaseUser.uid);
-            
-            const enhancedUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              emailVerified: firebaseUser.emailVerified,
-              userData: result.success ? result.data : null,
-              dataSource: result.source || 'firebase' // Track data source for debugging
-            };
-            
-            setUser(enhancedUser);
-            
-            // Show notification if using stale data
-            if (result.isStale) {
-              console.log('Using cached data while offline or during network issues');
-            }
-            
-          } catch (error) {
-            console.error('Error fetching user data:', error);
-            
-            // Try to get cached data as fallback
-            const cachedResult = await userDataManager.getUserDataCached(firebaseUser.uid);
-            const basicUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              emailVerified: firebaseUser.emailVerified,
-              userData: cachedResult.success ? cachedResult.data : null,
-              dataSource: 'cache_fallback'
-            };
-            
-            setUser(basicUser);
+        try {
+          // Always try to get the latest data, with fallback to cache
+          const result = await userDataManager.getUserDataCached(firebaseUser.uid);
+          
+          const enhancedUser = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            emailVerified: firebaseUser.emailVerified,
+            userData: result.success ? result.data : null,
+            dataSource: result.source || 'firebase' // Track data source for debugging
+          };
+          
+          setUser(enhancedUser);
+          
+          // Store user data in localStorage for persistence across sessions
+          localStorage.setItem('userData', JSON.stringify({
+            uid: enhancedUser.uid,
+            email: enhancedUser.email,
+            displayName: enhancedUser.displayName,
+            photoURL: enhancedUser.photoURL,
+            userData: enhancedUser.userData
+          }));
+          
+          // Show notification if using stale data
+          if (result.isStale) {
+            console.log('Using cached data while offline or during network issues');
           }
-        } else if (user && user.uid === firebaseUser.uid) {
-          // Same user, just update Firebase Auth properties if needed
-          setUser(prevUser => ({
-            ...prevUser,
-            displayName: firebaseUser.displayName || prevUser.displayName,
-            photoURL: firebaseUser.photoURL || prevUser.photoURL,
-            emailVerified: firebaseUser.emailVerified
+          
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          
+          // Try to get cached data as fallback
+          const cachedResult = await userDataManager.getUserDataCached(firebaseUser.uid);
+          const basicUser = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            emailVerified: firebaseUser.emailVerified,
+            userData: cachedResult.success ? cachedResult.data : null,
+            dataSource: 'cache_fallback'
+          };
+          
+          setUser(basicUser);
+          
+          // Store fallback data too
+          localStorage.setItem('userData', JSON.stringify({
+            uid: basicUser.uid,
+            email: basicUser.email,
+            displayName: basicUser.displayName,
+            photoURL: basicUser.photoURL,
+            userData: basicUser.userData
           }));
         }
       } else {
         setUser(null);
-        // DON'T clear user cache on sign out - keep it for faster re-login
-        // userDataManager.clearUserCache(user.uid); // Commented out to preserve data
+        // Keep cached data but remove sensitive localStorage data only
+        const storedData = localStorage.getItem('userData');
+        if (storedData) {
+          try {
+            const userData = JSON.parse(storedData);
+            // Keep the cached data in userDataManager but clear sensitive localStorage
+            localStorage.removeItem('userData');
+            console.log('User signed out but data cache preserved for next login');
+          } catch (e) {
+            localStorage.removeItem('userData');
+          }
+        }
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
