@@ -37,8 +37,29 @@ function App() {
   const [isChatManagerOpen, setIsChatManagerOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Ensure we have the latest user data from Firestore
+        try {
+          const { getUserData } = await import('./services/firebase');
+          const result = await getUserData(user.uid);
+          if (result.success) {
+            // Merge Firebase Auth user with Firestore data
+            const enhancedUser = {
+              ...user,
+              userData: result.data
+            };
+            setUser(enhancedUser);
+          } else {
+            setUser(user);
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setUser(user);
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 

@@ -67,14 +67,22 @@ export const checkUsernameAvailabilityLocal = async (username) => {
   }
 };
 
-// Local username reservation (simple update)
+// Local username reservation (improved with double-check)
 export const reserveUsernameLocal = async (userId, username) => {
   try {
+    // Double-check availability before updating
+    const availabilityCheck = await checkUsernameAvailabilityLocal(username);
+    if (!availabilityCheck.success || !availabilityCheck.available) {
+      return { success: false, error: 'Username is not available' };
+    }
+
+    // Update user document with new username
     await updateDoc(doc(db, 'users', userId), { 
-      username: username,
-      profileURL: `https://irtzalink.site/${username}`,
+      username: username.toLowerCase(),
+      profileURL: `https://irtzalink.vercel.app/${username.toLowerCase()}`,
       updatedAt: new Date()
     });
+    
     return { success: true };
   } catch (error) {
     console.error('Error reserving username:', error);
