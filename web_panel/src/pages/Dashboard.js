@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserData, searchUsersByUsername, sendFriendRequestNew, getUserRelationshipStatus } from '../services/firebase';
+import { getUserData, searchUsersByUsername, sendFriendRequestNew, getUserRelationshipStatus, getUserAnalytics } from '../services/firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';

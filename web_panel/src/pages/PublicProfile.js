@@ -308,9 +308,9 @@ const PublicProfile = () => {
                 </a>
                 
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
                     navigator.clipboard.writeText(window.location.href);
-                    const button = event.target.closest('button');
+                    const button = e.target.closest('button');
                     const originalText = button.innerHTML;
                     button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span class="text-sm font-medium">Copied!</span>';
                     setTimeout(() => {
