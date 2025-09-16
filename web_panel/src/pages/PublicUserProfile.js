@@ -74,14 +74,33 @@ const PublicUserProfile = ({ currentUser }) => {
 
   const handleShare = async () => {
     const profileUrl = `${window.location.origin}/user/${userId}`;
+    
+    // Check if native sharing is available and supported
+    if (navigator.share && navigator.canShare) {
+      try {
+        await navigator.share({
+          title: `${userData.displayName} - IrtzaLink`,
+          text: `Check out ${userData.displayName}'s profile on IrtzaLink`,
+          url: profileUrl
+        });
+        return;
+      } catch (error) {
+        console.log('Native sharing failed, falling back to clipboard:', error);
+      }
+    }
+    
+    // Fallback to clipboard
     try {
-      await navigator.share({
-        title: `${userData.displayName} - IrtzaLink`,
-        text: `Check out ${userData.displayName}'s profile on IrtzaLink`,
-        url: profileUrl
-      });
-    } catch (error) {
-      navigator.clipboard.writeText(profileUrl);
+      await navigator.clipboard.writeText(profileUrl);
+      toast.success('Profile link copied to clipboard!');
+    } catch (clipboardError) {
+      // Final fallback - create a temporary input element
+      const tempInput = document.createElement('input');
+      tempInput.value = profileUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
       toast.success('Profile link copied to clipboard!');
     }
   };
