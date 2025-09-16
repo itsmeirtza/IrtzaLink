@@ -5,7 +5,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';
 import LiveAnalytics from '../components/LiveAnalytics';
-import FriendsManager from '../components/FriendsManager';
+import FollowManager from '../components/FollowManager';
 import FollowButton from '../components/FollowButton';
 import QRCode from 'react-qr-code';
 import toast from 'react-hot-toast';
@@ -420,8 +420,8 @@ const Dashboard = ({ user }) => {
         <LiveAnalytics user={user} />
       </div>
 
-      {/* Friends Manager Section */}
-      <FriendsManager user={user} />
+      {/* Follow Manager Section */}
+      <FollowManager user={user} />
 
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
         {/* Quick Actions */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
+import { userDataManager } from './services/userDataManager';
 
 // Components
 import Navbar from './components/Navbar';
@@ -24,6 +25,8 @@ import ContactUs from './pages/ContactUs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
 import FollowTest from './pages/FollowTest';
+import FollowersPage from './pages/FollowersPage';
+import FollowingPage from './pages/FollowingPage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -74,8 +77,8 @@ function App() {
         // Only update if this is a different user or first time
         if (!user || user.uid !== firebaseUser.uid) {
           try {
-            const { getUserData } = await import('./services/firebase');
-            const result = await getUserData(firebaseUser.uid);
+            // Use UserDataManager for better data persistence and caching
+            const result = await userDataManager.getUserDataCached(firebaseUser.uid);
             
             const enhancedUser = {
               uid: firebaseUser.uid,
@@ -83,38 +86,33 @@ function App() {
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               emailVerified: firebaseUser.emailVerified,
-              userData: result.success ? result.data : null
+              userData: result.success ? result.data : null,
+              dataSource: result.source || 'firebase' // Track data source for debugging
             };
             
             setUser(enhancedUser);
             
-            // Store user data in localStorage for persistence
-            localStorage.setItem('userData', JSON.stringify({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-              userData: result.success ? result.data : null
-            }));
+            // Show notification if using stale data
+            if (result.isStale) {
+              console.log('Using cached data while offline or during network issues');
+            }
+            
           } catch (error) {
             console.error('Error fetching user data:', error);
-            // Still create user object even if Firestore fails
+            
+            // Try to get cached data as fallback
+            const cachedResult = await userDataManager.getUserDataCached(firebaseUser.uid);
             const basicUser = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               emailVerified: firebaseUser.emailVerified,
-              userData: null
+              userData: cachedResult.success ? cachedResult.data : null,
+              dataSource: 'cache_fallback'
             };
             
             setUser(basicUser);
-            localStorage.setItem('userData', JSON.stringify({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL
-            }));
           }
         } else if (user && user.uid === firebaseUser.uid) {
           // Same user, just update Firebase Auth properties if needed
@@ -127,8 +125,10 @@ function App() {
         }
       } else {
         setUser(null);
-        // Clear user data from localStorage on sign out
-        localStorage.removeItem('userData');
+        // Clear user cache on sign out but keep it for potential re-login
+        if (user?.uid) {
+          userDataManager.clearUserCache(user.uid);
+        }
       }
       setLoading(false);
     });
@@ -227,6 +227,8 @@ function App() {
                 <Route path="/admin" element={<Admin user={user} />} />
                 <Route path="/follow-test" element={<FollowTest user={user} />} />
                 <Route path="/user/:userId" element={<PublicUserProfile currentUser={user} />} />
+                <Route path="/user/:userId/followers" element={<FollowersPage currentUser={user} />} />
+                <Route path="/user/:userId/following" element={<FollowingPage currentUser={user} />} />
                 <Route path="/contact" element={<ContactUs />} />
                 <Route path="/contact-us" element={<Navigate to="/contact" replace />} />
                 <Route path="/help" element={<Navigate to="/contact" replace />} />
@@ -252,6 +254,8 @@ function App() {
                 <Route path="/" element={<Login darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/login" element={<Login darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/user/:userId" element={<PublicUserProfile currentUser={null} />} />
+                <Route path="/user/:userId/followers" element={<FollowersPage currentUser={null} />} />
+                <Route path="/user/:userId/following" element={<FollowingPage currentUser={null} />} />
                 <Route path="/contact" element={<ContactUs />} />
                 <Route path="/contact-us" element={<Navigate to="/contact" replace />} />
                 <Route path="/help" element={<Navigate to="/contact" replace />} />

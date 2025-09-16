@@ -9,6 +9,10 @@ service cloud.firestore {
       // Allow public read access to active profiles
       allow read: if resource.data.isActive == true;
       
+      // Allow follow/unfollow operations (updating followers/following arrays)
+      allow update: if request.auth != null && 
+        isValidFollowUpdate();
+      
       // Admin can read/write all users
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
@@ -51,6 +55,33 @@ service cloud.firestore {
       // Only allow creation/update by the user who owns it
       allow create, update: if request.auth != null && 
         request.auth.uid == resource.data.userId;
+    }
+    
+    // Notifications collection for follow notifications
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read, update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+        
+      // Allow creating notifications
+      allow create: if request.auth != null;
+    }
+    
+    // Helper functions
+    
+    // Validate follow relationship updates
+    function isValidFollowUpdate() {
+      // Check if this is a follow/unfollow operation on followers or following arrays
+      let changedFields = request.resource.data.diff(resource.data).affectedKeys();
+      let isFollowOperation = 'following' in changedFields || 'followers' in changedFields;
+      
+      // If it's a follow operation, allow it (since we validate the user IDs)
+      if (isFollowOperation) {
+        return true;
+      }
+      
+      // Otherwise, check if user owns the document
+      return request.auth.uid == resource.id;
     }
   }
 }

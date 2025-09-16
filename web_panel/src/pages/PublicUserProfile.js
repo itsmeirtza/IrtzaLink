@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getUserData, sendFriendRequestNew, acceptFriendRequest, removeFriend, getUserRelationshipStatus, trackProfileVisit } from '../services/firebase';
+import { getUserData, trackProfileVisit } from '../services/firebase';
+import FollowButton from '../components/FollowButton';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -18,19 +19,12 @@ const PublicUserProfile = ({ currentUser }) => {
   const { userId } = useParams();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [relationshipStatus, setRelationshipStatus] = useState({
-    areFriends: false,
-    sentRequest: false,
-    receivedRequest: false,
-    canSendRequest: false
-  });
-  const [actionLoading, setActionLoading] = useState(false);
+  const [followRefreshKey, setFollowRefreshKey] = useState(0);
 
   useEffect(() => {
     if (userId) {
       fetchUserProfile();
       if (currentUser) {
-        checkRelationshipStatus();
         // Track profile visit
         trackProfileVisit(currentUser.uid, userId);
       }
@@ -51,73 +45,9 @@ const PublicUserProfile = ({ currentUser }) => {
     }
   };
 
-  const checkRelationshipStatus = async () => {
-    if (!currentUser || !userId) return;
-
-    try {
-      const result = await getUserRelationshipStatus(currentUser.uid, userId);
-      if (result.success) {
-        setRelationshipStatus(result.status);
-      }
-    } catch (error) {
-      console.error('Error checking relationship status:', error);
-      setRelationshipStatus({
-        areFriends: false,
-        sentRequest: false,
-        receivedRequest: false,
-        canSendRequest: false
-      });
-    }
-  };
-
-  const handleFriendAction = async () => {
-    if (!currentUser) {
-      toast.error('Please login to connect with users');
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      if (relationshipStatus.canSendRequest) {
-        // Send friend request
-        const result = await sendFriendRequestNew(currentUser.uid, userId);
-        if (result.success) {
-          if (result.becameFriends) {
-            toast.success('You are now friends! 🎉');
-          } else {
-            toast.success('Friend request sent!');
-          }
-          await checkRelationshipStatus();
-        } else {
-          toast.error(result.error || 'Failed to send friend request');
-        }
-      } else if (relationshipStatus.receivedRequest) {
-        // Accept friend request
-        const result = await acceptFriendRequest(currentUser.uid, userId);
-        if (result.success) {
-          toast.success('Friend request accepted! 🎉');
-          await checkRelationshipStatus();
-        } else {
-          toast.error(result.error || 'Failed to accept friend request');
-        }
-      } else if (relationshipStatus.areFriends) {
-        // Remove friend
-        if (window.confirm('Are you sure you want to remove this friend?')) {
-          const result = await removeFriend(currentUser.uid, userId);
-          if (result.success) {
-            toast.success('Friend removed');
-            await checkRelationshipStatus();
-          } else {
-            toast.error(result.error || 'Failed to remove friend');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Friend action error:', error);
-      toast.error('Error with friend action');
-    } finally {
-      setActionLoading(false);
-    }
+  const handleFollowChange = () => {
+    // Refresh follow button state
+    setFollowRefreshKey(prev => prev + 1);
   };
 
   const handleChat = () => {
@@ -126,11 +56,8 @@ const PublicUserProfile = ({ currentUser }) => {
       return;
     }
     
-    // Check if they are friends
-    if (!relationshipStatus.areFriends) {
-      toast.error('You can only chat with friends. Send a friend request first!');
-      return;
-    }
+    // Note: Chat functionality can be enabled for mutual followers
+    // For now, we'll allow any user to attempt chat
     
     // Pass chat user data to parent component or handle chat opening
     if (window.openChat) {
@@ -226,63 +153,47 @@ const PublicUserProfile = ({ currentUser }) => {
 
               {/* Stats */}
               <div className="grid grid-cols-3 sm:flex sm:justify-center lg:justify-start gap-4 sm:gap-6 mb-6">
-                <div className="text-center">
+                <Link 
+                  to={`/user/${userId}/followers`}
+                  className="text-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2 transition-colors duration-200"
+                >
                   <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {userData.friends?.length || 0}
+                    {userData.followers?.length || 0}
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Friends</div>
-                </div>
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Followers</div>
+                </Link>
+                <Link 
+                  to={`/user/${userId}/following`}
+                  className="text-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2 transition-colors duration-200"
+                >
+                  <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
+                    {userData.following?.length || 0}
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Following</div>
+                </Link>
                 <div className="text-center">
                   <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
                     {userData.socialLinks ? Object.values(userData.socialLinks).filter(link => link && link.trim()).length : 0}
                   </div>
                   <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Links</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {userData.createdAt ? Math.floor((new Date() - (userData.createdAt.toDate ? userData.createdAt.toDate() : new Date(userData.createdAt))) / (1000 * 60 * 60 * 24)) : 0}
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Days</div>
-                </div>
               </div>
 
               {/* Action Buttons */}
               {currentUser && currentUser.uid !== userId && (
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-2 sm:gap-3 w-full">
-                  {/* Friend Request Button */}
-                  <button
-                    onClick={handleFriendAction}
-                    disabled={actionLoading}
-                    className={`flex items-center justify-center space-x-2 px-4 py-3 sm:py-2 rounded-lg font-medium transition-colors duration-200 w-full sm:w-auto ${
-                      relationshipStatus.areFriends
-                        ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-600 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
-                        : relationshipStatus.receivedRequest
-                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
-                        : relationshipStatus.sentRequest
-                        ? 'bg-gray-100 text-gray-600 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400'
-                        : relationshipStatus.canSendRequest
-                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
-                        : 'bg-gray-100 text-gray-600 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400'
-                    }`}
-                  >
-                    {actionLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
-                    ) : (
-                      <>
-                        {relationshipStatus.areFriends ? (
-                          <UserMinusIcon className="w-4 h-4" />
-                        ) : (
-                          <UserPlusIcon className="w-4 h-4" />
-                        )}
-                        <span>
-                          {relationshipStatus.areFriends ? 'Friends' : 
-                           relationshipStatus.receivedRequest ? 'Accept Request' : 
-                           relationshipStatus.sentRequest ? 'Request Sent' :
-                           relationshipStatus.canSendRequest ? 'Add Friend' : 'Cannot Add'}
-                        </span>
-                      </>
-                    )}
-                  </button>
+                  {/* Follow Button */}
+                  <FollowButton
+                    key={followRefreshKey}
+                    currentUser={currentUser}
+                    targetUser={{
+                      uid: userId,
+                      username: userData.username,
+                      displayName: userData.displayName,
+                      photoURL: userData.photoURL
+                    }}
+                    onFollowChange={handleFollowChange}
+                  />
 
                   {/* Chat Button */}
                   <button
