@@ -82,15 +82,24 @@ function App() {
           
           console.log('🔐 Loading user data with permanent storage:', result);
           
+          // Use saved data to enhance Firebase user info
+          const savedData = result.success ? result.data : {};
+          
           const enhancedUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
+            displayName: savedData.displayName || firebaseUser.displayName,
+            photoURL: savedData.photoURL || firebaseUser.photoURL,
             emailVerified: firebaseUser.emailVerified,
             userData: result.success ? result.data : null,
             dataSource: result.source || 'permanent_storage' // Track data source for debugging
           };
+          
+          console.log('🔐 Enhanced user with saved data:', {
+            displayName: enhancedUser.displayName,
+            hasUserData: !!enhancedUser.userData,
+            dataKeys: enhancedUser.userData ? Object.keys(enhancedUser.userData) : []
+          });
           
           setUser(enhancedUser);
           

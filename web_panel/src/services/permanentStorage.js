@@ -49,16 +49,34 @@ class PermanentStorageManager {
     };
 
     try {
-      // 1. Save to localStorage immediately (PRIMARY STORAGE)
+      // 1. Save to MULTIPLE locations for maximum safety
       const userStorageKey = this.getUserStorageKey(userId);
+      const simpleKey = `irtzalink_user_${userId}`; // Simpler key as backup
+      const displayKey = `irtzalink_display_${userId}`; // For display data
+      
+      // Save to all 3 locations
       localStorage.setItem(userStorageKey, JSON.stringify(enhancedData));
+      localStorage.setItem(simpleKey, JSON.stringify(enhancedData));
+      localStorage.setItem(displayKey, JSON.stringify({
+        displayName: enhancedData.displayName,
+        username: enhancedData.username,
+        bio: enhancedData.bio,
+        socialLinks: enhancedData.socialLinks,
+        contactInfo: enhancedData.contactInfo,
+        photoURL: enhancedData.photoURL
+      }));
       
       // 2. Also save to general storage for backup
       const allData = this.getAllStoredData();
       allData[userId] = enhancedData;
       localStorage.setItem(this.storageKey, JSON.stringify(allData));
       
-      console.log(`💾 User data saved permanently for user ${userId.slice(0, 8)}... (${source})`);
+      console.log(`💾 SUCCESS: User data saved to ${4} locations for user ${userId.slice(0, 8)}... (${source})`);
+      console.log(`💾 Saved data preview:`, {
+        displayName: enhancedData.displayName,
+        username: enhancedData.username,
+        hasData: Object.keys(enhancedData).length
+      });
       
       // 3. Try Firebase as backup (but don't fail if it doesn't work)
       try {
@@ -83,29 +101,61 @@ class PermanentStorageManager {
     }
 
     try {
-      // 1. Try individual user storage first
+      // 1. Try multiple storage locations (most reliable first)
       const userStorageKey = this.getUserStorageKey(userId);
-      const individualData = localStorage.getItem(userStorageKey);
+      const simpleKey = `irtzalink_user_${userId}`;
+      const displayKey = `irtzalink_display_${userId}`;
+      
+      console.log(`🔍 DEBUG: Checking for data at multiple keys for user ${userId.slice(0, 8)}...`);
+      
+      // Try primary key first
+      let individualData = localStorage.getItem(userStorageKey);
+      console.log(`🔍 Primary key (${userStorageKey}):`, individualData ? 'FOUND' : 'NOT FOUND');
+      
+      // Try simple key if primary fails
+      if (!individualData) {
+        individualData = localStorage.getItem(simpleKey);
+        console.log(`🔍 Simple key (${simpleKey}):`, individualData ? 'FOUND' : 'NOT FOUND');
+      }
+      
+      // Try display key if others fail
+      if (!individualData) {
+        const displayData = localStorage.getItem(displayKey);
+        console.log(`🔍 Display key (${displayKey}):`, displayData ? 'FOUND' : 'NOT FOUND');
+        if (displayData) {
+          individualData = displayData;
+        }
+      }
       
       if (individualData) {
-        const userData = JSON.parse(individualData);
-        console.log(`📱 Loaded user data from individual storage for ${userId.slice(0, 8)}...`);
-        
-        // Try to sync with Firebase in background
-        this.backgroundSyncFromFirebase(userId, userData);
-        
-        return { 
-          success: true, 
-          data: userData, 
-          source: 'localStorage_individual',
-          lastSaved: userData.lastSaved 
-        };
+        try {
+          const userData = JSON.parse(individualData);
+          console.log(`📱 SUCCESS: Loaded user data from storage:`, {
+            displayName: userData.displayName,
+            username: userData.username,
+            hasData: Object.keys(userData).length
+          });
+          
+          // IMMEDIATELY return this data
+          return { 
+            success: true, 
+            data: userData, 
+            source: 'localStorage_found',
+            lastSaved: userData.lastSaved 
+          };
+        } catch (parseError) {
+          console.error(`❌ Error parsing stored data:`, parseError);
+        }
       }
 
       // 2. Try general storage backup
       const allData = this.getAllStoredData();
+      console.log(`🔍 DEBUG: All stored data keys:`, Object.keys(allData));
+      console.log(`🔍 DEBUG: Looking for userId in backup:`, userId);
+      console.log(`🔍 DEBUG: Backup data for user exists:`, allData[userId] ? 'YES' : 'NO');
+      
       if (allData[userId]) {
-        console.log(`📱 Loaded user data from general storage for ${userId.slice(0, 8)}...`);
+        console.log(`📱 SUCCESS: Loaded user data from general storage:`, allData[userId]);
         
         // Restore to individual storage
         localStorage.setItem(userStorageKey, JSON.stringify(allData[userId]));

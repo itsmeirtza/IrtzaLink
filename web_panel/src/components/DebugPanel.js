@@ -154,6 +154,55 @@ const DebugPanel = ({ user }) => {
         >
           Storage Stats
         </button>
+        
+        <button
+          onClick={async () => {
+            if (!user?.uid) {
+              toast.error('No user logged in');
+              return;
+            }
+            
+            // Save current time as test data
+            const testData = {
+              displayName: `Test User ${new Date().toLocaleTimeString()}`,
+              username: `testuser${Date.now()}`,
+              bio: `Test bio saved at ${new Date().toLocaleString()}`,
+              testTimestamp: Date.now()
+            };
+            
+            const result = await permanentStorage.saveUserData(user.uid, testData, 'debug_test');
+            if (result.success) {
+              toast.success('✅ Test data saved! Now sign out and back in to test.');
+              console.log('Test data saved:', testData);
+            } else {
+              toast.error('❌ Failed to save test data');
+            }
+          }}
+          className="w-full bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600"
+        >
+          Save Test Data
+        </button>
+        
+        <button
+          onClick={async () => {
+            if (!user?.uid) {
+              toast.error('No user logged in');
+              return;
+            }
+            
+            const result = await permanentStorage.loadUserData(user.uid);
+            if (result.success) {
+              toast.success('✅ Data found! Check console.');
+              console.log('Loaded data:', result.data);
+            } else {
+              toast.error('❌ No data found');
+              console.error('Load error:', result.error);
+            }
+          }}
+          className="w-full bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600"
+        >
+          Load Test Data
+        </button>
       </div>
 
       {Object.keys(testResults).length > 0 && (

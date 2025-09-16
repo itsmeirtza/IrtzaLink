@@ -27,21 +27,48 @@ const Profile = ({ user }) => {
 
   useEffect(() => {
     if (user && user.uid) {
-      // Try to restore from localStorage first
-      const backupData = localStorage.getItem(`profileData_${user.uid}`);
-      if (backupData) {
-        try {
-          const parsedData = JSON.parse(backupData);
-          console.log('Restored from localStorage:', parsedData);
-          setFormData(parsedData);
-        } catch (error) {
-          console.error('Failed to parse localStorage data:', error);
-        }
-      }
+      console.log('🔍 Profile component received user:', {
+        uid: user.uid,
+        displayName: user.displayName,
+        hasUserData: !!user.userData,
+        userDataKeys: user.userData ? Object.keys(user.userData) : []
+      });
       
-      fetchUserData();
+      // If user already has userData from App.js, use it immediately
+      if (user.userData && Object.keys(user.userData).length > 0) {
+        console.log('📱 Using userData from App.js directly');
+        setUserDataFromSaved(user.userData);
+      } else {
+        console.log('🔄 No userData in user prop, fetching from permanent storage');
+        fetchUserData();
+      }
     }
-  }, [user?.uid]);
+  }, [user?.uid, user?.userData]);
+
+  const setUserDataFromSaved = (savedData) => {
+    console.log('💾 Setting form data from saved data:', savedData);
+    
+    const finalFormData = {
+      displayName: savedData.displayName || user.displayName || '',
+      username: savedData.username || '',
+      bio: savedData.bio || '',
+      photoURL: savedData.photoURL || user.photoURL || '',
+      socialLinks: savedData.socialLinks || Object.fromEntries(
+        socialPlatforms.map(platform => [platform.key, ''])
+      ),
+      contactInfo: savedData.contactInfo || {
+        phone: '',
+        email: user.email || '',
+        website: ''
+      },
+      theme: savedData.theme || 'dark'
+    };
+    
+    console.log('✅ Final form data set:', finalFormData);
+    setFormData(finalFormData);
+    setUserData(savedData);
+    setLoading(false);
+  };
 
   const fetchUserData = async () => {
     if (!user?.uid) return;
