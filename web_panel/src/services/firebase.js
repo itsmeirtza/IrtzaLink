@@ -959,7 +959,9 @@ export const getUserFollowers = async (userId, limitCount = 50) => {
               username: followerData.data.username,
               displayName: followerData.data.displayName,
               photoURL: followerData.data.photoURL,
-              bio: followerData.data.bio
+              bio: followerData.data.bio,
+              followers: followerData.data.followers || [],
+              following: followerData.data.following || []
             };
           }
           return null;
@@ -991,7 +993,9 @@ export const getUserFollowing = async (userId, limitCount = 50) => {
               username: followingData.data.username,
               displayName: followingData.data.displayName,
               photoURL: followingData.data.photoURL,
-              bio: followingData.data.bio
+              bio: followingData.data.bio,
+              followers: followingData.data.followers || [],
+              following: followingData.data.following || []
             };
           }
           return null;
