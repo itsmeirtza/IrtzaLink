@@ -208,29 +208,42 @@ const Profile = ({ user }) => {
   const handleUsernameChange = async (e) => {
     const username = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     
-    // Import one-time change function
-    const { canChangeUsernameOneTime } = await import('../config/verifiedAccounts');
-    
-    // Check if user already has a username and if they can change it
+    // Check username change restrictions
     if (userData?.username && userData.username !== username) {
-      // Check if user has one-time permission
-      if (!canChangeUsernameOneTime(user.email)) {
-        // Check normal 15-day rule for other users
-        if (userData?.usernameLastChanged) {
-          const lastChanged = userData.usernameLastChanged.toDate ? 
-            userData.usernameLastChanged.toDate() : 
-            new Date(userData.usernameLastChanged);
-          const daysSinceChange = Math.floor((new Date() - lastChanged) / (1000 * 60 * 60 * 24));
-          
-          if (daysSinceChange < 15) {
-            toast.error(`Username can only be changed every 15 days. ${15 - daysSinceChange} days remaining.`);
-            return;
-          }
-        } else {
-          toast.error('Username can only be changed once. Contact support for assistance.');
+      console.log('📝 Username change attempt:', {
+        currentUsername: userData.username,
+        newUsername: username,
+        hasChanged: !!userData.usernameLastChanged,
+        lastChanged: userData.usernameLastChanged
+      });
+      
+      // If user has previously changed their username, apply 15-day restriction
+      if (userData.usernameLastChanged) {
+        const lastChanged = userData.usernameLastChanged.toDate ? 
+          userData.usernameLastChanged.toDate() : 
+          new Date(userData.usernameLastChanged);
+        
+        const daysSinceChange = Math.floor((new Date() - lastChanged) / (1000 * 60 * 60 * 24));
+        
+        console.log('⏰ Username change cooldown check:', {
+          lastChanged: lastChanged.toISOString(),
+          daysSinceChange,
+          canChange: daysSinceChange >= 15
+        });
+        
+        if (daysSinceChange < 15) {
+          toast.error(`Username can only be changed every 15 days. ${15 - daysSinceChange} days remaining.`);
+          // Reset to current username
+          setFormData(prev => ({ ...prev, username: userData.username }));
           return;
         }
+      } else {
+        // First username change is always allowed - no restriction
+        console.log('✨ First time username change - allowed!');
       }
+    } else if (!userData?.username && username) {
+      // Setting username for the first time - always allowed
+      console.log('🆕 Setting username for the first time');
     }
     
     setFormData(prev => ({ ...prev, username }));
