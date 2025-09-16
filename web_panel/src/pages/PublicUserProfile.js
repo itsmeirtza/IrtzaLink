@@ -344,8 +344,8 @@ const PublicUserProfile = ({ currentUser }) => {
                 <p className="text-xs text-center text-gray-500 mt-2">Scan QR Code</p>
               </div>
             )}
+          </div>
         </div>
-      </div>
 
         {/* Social Links */}
         {activeSocialLinks.length > 0 && (
@@ -373,9 +373,9 @@ const PublicUserProfile = ({ currentUser }) => {
                   </div>
                 </a>
               ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Contact Information */}
       {(userData.contactInfo?.phone || userData.contactInfo?.email || userData.contactInfo?.website) && (
@@ -422,6 +422,7 @@ const PublicUserProfile = ({ currentUser }) => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
