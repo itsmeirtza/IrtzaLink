@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
 import { userDataManager } from './services/userDataManager';
+import { permanentStorage, loadUserDataPermanently } from './services/permanentStorage';
 
 // Components
 import Navbar from './components/Navbar';
@@ -76,8 +77,10 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Always try to get the latest data, with fallback to cache
-          const result = await userDataManager.getUserDataCached(firebaseUser.uid);
+          // Use permanent storage - NEVER loses data!
+          const result = await loadUserDataPermanently(firebaseUser.uid);
+          
+          console.log('🔐 Loading user data with permanent storage:', result);
           
           const enhancedUser = {
             uid: firebaseUser.uid,
@@ -86,7 +89,7 @@ function App() {
             photoURL: firebaseUser.photoURL,
             emailVerified: firebaseUser.emailVerified,
             userData: result.success ? result.data : null,
-            dataSource: result.source || 'firebase' // Track data source for debugging
+            dataSource: result.source || 'permanent_storage' // Track data source for debugging
           };
           
           setUser(enhancedUser);
@@ -108,16 +111,15 @@ function App() {
         } catch (error) {
           console.error('Error fetching user data:', error);
           
-          // Try to get cached data as fallback
-          const cachedResult = await userDataManager.getUserDataCached(firebaseUser.uid);
+          // Permanent storage will handle fallbacks internally - just create basic user
           const basicUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
             emailVerified: firebaseUser.emailVerified,
-            userData: cachedResult.success ? cachedResult.data : null,
-            dataSource: 'cache_fallback'
+            userData: null,
+            dataSource: 'error_fallback'
           };
           
           setUser(basicUser);

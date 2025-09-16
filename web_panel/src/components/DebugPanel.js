@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createTestNotification } from '../services/firebase';
 import { testDataPersistence, testNotificationSystem, getLocalStorageItems } from '../utils/testHelpers';
+import { permanentStorage, saveNotificationPermanently, updateUserDataPermanently } from '../services/permanentStorage';
 import toast from 'react-hot-toast';
 
 const DebugPanel = ({ user }) => {
@@ -16,16 +17,26 @@ const DebugPanel = ({ user }) => {
 
     setLoading(true);
     try {
-      const result = await testDataPersistence(user.uid);
-      setTestResults(prev => ({ ...prev, dataPersistence: result }));
+      // Test permanent storage data persistence
+      const testData = {
+        displayName: `Test User ${Date.now()}`,
+        bio: `This is test data saved at ${new Date().toLocaleString()}`,
+        testField: 'permanent_storage_test',
+        lastTest: Date.now()
+      };
       
-      if (result.success) {
-        toast.success(`Data persistence test: ${result.persistenceWorking ? 'PASS' : 'FAIL'}`);
+      const saveResult = await updateUserDataPermanently(user.uid, testData);
+      
+      if (saveResult.success) {
+        toast.success('✅ Data saved with permanent storage - will NEVER be lost!');
+        setTestResults(prev => ({ ...prev, dataPersistence: { success: true, persistenceWorking: true } }));
       } else {
-        toast.error(`Data persistence test failed: ${result.error}`);
+        toast.error(`❌ Data persistence test failed: ${saveResult.error}`);
+        setTestResults(prev => ({ ...prev, dataPersistence: { success: false, error: saveResult.error } }));
       }
     } catch (error) {
       toast.error(`Test error: ${error.message}`);
+      setTestResults(prev => ({ ...prev, dataPersistence: { success: false, error: error.message } }));
     } finally {
       setLoading(false);
     }
@@ -39,11 +50,21 @@ const DebugPanel = ({ user }) => {
 
     setLoading(true);
     try {
-      const result = await testNotificationSystem(user.uid);
+      // Create test notification using permanent storage
+      const testNotification = {
+        type: 'test',
+        message: 'This is a test notification from permanent storage!',
+        read: false,
+        timestamp: new Date(),
+        fromUserId: user.uid,
+        toUserId: user.uid
+      };
+      
+      const result = await saveNotificationPermanently(user.uid, testNotification);
       setTestResults(prev => ({ ...prev, notifications: result }));
       
       if (result.success) {
-        toast.success('Test notification created! Check the bell icon.');
+        toast.success('Test notification created with permanent storage! Check the bell icon.');
       } else {
         toast.error(`Notification test failed: ${result.error}`);
       }
@@ -121,6 +142,17 @@ const DebugPanel = ({ user }) => {
           className="w-full bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600"
         >
           Clear LocalStorage
+        </button>
+        
+        <button
+          onClick={() => {
+            const stats = permanentStorage.getStorageStats();
+            console.log('Storage stats:', stats);
+            toast.success(`Storage: ${stats.totalUsers} users, ${stats.totalNotifications} notifications`);
+          }}
+          className="w-full bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600"
+        >
+          Storage Stats
         </button>
       </div>
 

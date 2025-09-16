@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getUserData, updateUserData, uploadProfileImage, generateQRCode, checkUsernameAvailabilityLocal, reserveUsernameLocal } from '../services/firebase';
+import { loadUserDataPermanently, updateUserDataPermanently } from '../services/permanentStorage';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -45,12 +46,12 @@ const Profile = ({ user }) => {
   const fetchUserData = async () => {
     if (!user?.uid) return;
     
-    console.log('Fetching user data for:', user.uid);
+    console.log('🔐 Loading user data with permanent storage for:', user.uid);
     setLoading(true);
     
     try {
-      const result = await getUserData(user.uid);
-      console.log('Firestore result:', result);
+      const result = await loadUserDataPermanently(user.uid);
+      console.log('Permanent storage result:', result);
       
       if (result.success && result.data) {
         // User exists in Firestore
@@ -329,9 +330,9 @@ const Profile = ({ user }) => {
         updateData.usernameLastChanged = new Date();
       }
       
-      console.log('Updating profile with data:', updateData);
+      console.log('💾 Updating profile with permanent storage:', updateData);
       
-      const updateResult = await updateUserData(user.uid, updateData);
+      const updateResult = await updateUserDataPermanently(user.uid, updateData);
       
       if (updateResult.success) {
         toast.success('Profile updated successfully!');
