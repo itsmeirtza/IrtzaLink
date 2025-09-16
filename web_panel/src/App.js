@@ -14,7 +14,6 @@ import LoadingSplash from './components/LoadingSplash';
 import Footer from './components/Footer';
 import ChatBox from './components/ChatBox';
 import ChatManager from './components/ChatManager';
-import DebugPanel from './components/DebugPanel';
 
 // Pages
 import Login from './pages/Login';
@@ -31,7 +30,6 @@ import AboutUs from './pages/AboutUs';
 import FollowTest from './pages/FollowTest';
 import FollowersPage from './pages/FollowersPage';
 import FollowingPage from './pages/FollowingPage';
-import DataPersistenceTest from './pages/DataPersistenceTest';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -260,7 +258,6 @@ function App() {
                 <Route path="/settings" element={<Settings user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/admin" element={<Admin user={user} />} />
                 <Route path="/follow-test" element={<FollowTest user={user} />} />
-                <Route path="/data-test" element={<DataPersistenceTest user={user} />} />
                 <Route path="/user/:userId" element={<PublicUserProfile currentUser={user} />} />
                 <Route path="/user/:userId/followers" element={<FollowersPage currentUser={user} />} />
                 <Route path="/user/:userId/following" element={<FollowingPage currentUser={user} />} />
@@ -329,10 +326,6 @@ function App() {
           />
         )}
         
-        {/* Debug Panel - for testing issues */}
-        {user && (
-          <DebugPanel user={user} />
-        )}
       </Router>
     </div>
   );

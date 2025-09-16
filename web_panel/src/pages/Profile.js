@@ -389,12 +389,8 @@ const Profile = ({ user }) => {
           console.warn('⚠️ Permanent storage backup failed (main save still successful):', permError.message);
         }
         
-        // Enhanced success message based on save status
-        const successMessage = enhancedResult.firebaseSync
-          ? 'Profile saved successfully! ☁️ Synced to cloud + 📱 5 local backups'
-          : 'Profile saved successfully! 📱 5 local backups created (cloud sync will retry)';
-        
-        toast.success(successMessage);
+        // Simple success message
+        toast.success('Saved');
         
         // Update local state immediately (don't wait for fetchUserData)
         setUserData(prev => ({ ...prev, ...updateData }));
@@ -405,10 +401,6 @@ const Profile = ({ user }) => {
           const savedData = localStorage.getItem(primaryKey);
           if (savedData) {
             console.log('✅ VERIFICATION: Profile data confirmed in localStorage');
-            toast.success('🔒 Data persistence verified! Your profile will never be lost.', {
-              duration: 2000,
-              position: 'bottom-right'
-            });
           } else {
             console.warn('⚠️ VERIFICATION: Primary save location not found, checking backups...');
             // Check backup locations
