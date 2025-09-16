@@ -125,10 +125,8 @@ function App() {
         }
       } else {
         setUser(null);
-        // Clear user cache on sign out but keep it for potential re-login
-        if (user?.uid) {
-          userDataManager.clearUserCache(user.uid);
-        }
+        // DON'T clear user cache on sign out - keep it for faster re-login
+        // userDataManager.clearUserCache(user.uid); // Commented out to preserve data
       }
       setLoading(false);
     });

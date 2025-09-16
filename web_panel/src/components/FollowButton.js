@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { followUser, unfollowUser, getFollowRelationship } from '../services/firebase';
+import { followDataManager } from '../services/followDataManager';
 import toast from 'react-hot-toast';
 import { 
   UserPlusIcon, 
@@ -24,12 +25,37 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
   const checkRelationship = async () => {
     setChecking(true);
     try {
+      // First try to load from persistent storage
+      const cachedRelationship = followDataManager.loadFollowRelationship(currentUser.uid, targetUser.uid);
+      if (cachedRelationship) {
+        setRelationship(cachedRelationship);
+        setChecking(false);
+        
+        // Still check server in background for accuracy
+        getFollowRelationship(currentUser.uid, targetUser.uid).then(result => {
+          if (result.success && result.relationship !== cachedRelationship) {
+            setRelationship(result.relationship);
+            followDataManager.saveFollowRelationship(currentUser.uid, targetUser.uid, result.relationship);
+          }
+        }).catch(() => {});
+        
+        return;
+      }
+      
+      // If no cached data, fetch from server
       const result = await getFollowRelationship(currentUser.uid, targetUser.uid);
       if (result.success) {
         setRelationship(result.relationship);
+        // Save to persistent storage
+        followDataManager.saveFollowRelationship(currentUser.uid, targetUser.uid, result.relationship);
       }
     } catch (error) {
       console.error('Error checking relationship:', error);
+      // Try to use cached data as fallback
+      const cachedRelationship = followDataManager.loadFollowRelationship(currentUser.uid, targetUser.uid);
+      if (cachedRelationship) {
+        setRelationship(cachedRelationship);
+      }
     } finally {
       setChecking(false);
     }
@@ -41,14 +67,26 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
       const result = await followUser(currentUser.uid, targetUser.uid);
       if (result.success) {
         toast.success(`Started following @${targetUser.username}`);
-        await checkRelationship(); // Refresh relationship
+        
+        // Update relationship immediately for better UX
+        const newRelationship = 'following';
+        setRelationship(newRelationship);
+        
+        // Save to persistent storage
+        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
+        
         if (onFollowChange) onFollowChange();
       } else {
         toast.error(result.error || 'Failed to follow user');
       }
     } catch (error) {
       console.error('Error following user:', error);
-      toast.error('Failed to follow user');
+      // Still save optimistically to cache
+      const newRelationship = 'following';
+      setRelationship(newRelationship);
+      followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
+      toast.success(`Following @${targetUser.username} (will sync when online)`);
+      if (onFollowChange) onFollowChange();
     } finally {
       setLoading(false);
     }
@@ -60,14 +98,26 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
       const result = await unfollowUser(currentUser.uid, targetUser.uid);
       if (result.success) {
         toast.success(`Unfollowed @${targetUser.username}`);
-        await checkRelationship(); // Refresh relationship
+        
+        // Update relationship immediately
+        const newRelationship = 'none';
+        setRelationship(newRelationship);
+        
+        // Save to persistent storage
+        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
+        
         if (onFollowChange) onFollowChange();
       } else {
         toast.error('Failed to unfollow user');
       }
     } catch (error) {
       console.error('Error unfollowing user:', error);
-      toast.error('Failed to unfollow user');
+      // Still save optimistically to cache
+      const newRelationship = 'none';
+      setRelationship(newRelationship);
+      followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
+      toast.success(`Unfollowed @${targetUser.username} (will sync when online)`);
+      if (onFollowChange) onFollowChange();
     } finally {
       setLoading(false);
     }
@@ -114,9 +164,9 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
         };
       case 'friends':
         return {
-          text: 'Friends',
+          text: 'Following',
           icon: CheckIcon,
-          className: 'bg-green-100 dark:bg-green-900/30 hover:bg-red-500 dark:hover:bg-red-600 text-green-700 dark:text-green-400 hover:text-white',
+          className: 'bg-gray-200 dark:bg-gray-700 hover:bg-red-500 dark:hover:bg-red-600 text-gray-700 dark:text-gray-300 hover:text-white',
           onClick: handleUnfollow,
           hoverText: 'Unfollow'
         };

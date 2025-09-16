@@ -43,8 +43,8 @@ class UserDataManager {
       if (item) {
         const storageData = JSON.parse(item);
         
-        // Check if data is still valid (not older than 1 hour)
-        const isStale = Date.now() - storageData.timestamp > 3600000; // 1 hour
+        // Check if data is still valid (keep for 24 hours for better persistence)
+        const isStale = Date.now() - storageData.timestamp > 86400000; // 24 hours
         
         return {
           data: storageData.data,
@@ -246,22 +246,19 @@ class UserDataManager {
     }, 5 * 60 * 1000); // 5 minutes
   }
 
-  // Clear cache for user (useful on logout)
+  // Clear cache for user (useful on logout) - BUT keep essential data
   clearUserCache(userId) {
-    const cacheKey = this.getCacheKey(userId);
-    const storageKey = this.getStorageKey(userId);
+    // Only clear sensitive data, keep profile and follow info cached
+    // This prevents data loss on sign out/in cycles
     
-    this.cache.delete(cacheKey);
-    localStorage.removeItem(storageKey);
-    
-    // Also clear any follow-related cache
-    const followCacheKeys = ['followers', 'following', 'followCounts'];
-    followCacheKeys.forEach(type => {
-      const key = this.getCacheKey(userId, type);
-      const storageKey = this.getStorageKey(userId, type);
-      this.cache.delete(key);
-      localStorage.removeItem(storageKey);
+    // Clear only auth-sensitive data
+    const sensitiveKeys = [`irtzalink_${userId}_auth`, `irtzalink_${userId}_session`];
+    sensitiveKeys.forEach(key => {
+      localStorage.removeItem(key);
     });
+    
+    // Keep profile data, follows, followers cached for better UX
+    console.log('Keeping user profile and follow data cached for faster re-login');
   }
 
   // Clear all cache (useful for app reset)
