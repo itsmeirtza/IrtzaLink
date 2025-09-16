@@ -142,10 +142,10 @@ const PublicProfile = () => {
           <h1 className={`text-2xl sm:text-3xl font-bold ${textColor} mb-2 animate-slide-in-right`}>
             {profile.displayName}
           </h1>
-          <p className={`text-base ${secondaryTextColor} mb-1 animate-slide-in-right flex items-center justify-center`} style={{ animationDelay: '0.1s' }}>
-            @{profile.username}
-            <VerifiedBadge username={profile.username} className="w-4 h-4" />
-          </p>
+          <div className={`text-base ${secondaryTextColor} mb-1 animate-slide-in-right flex items-center justify-center space-x-1`} style={{ animationDelay: '0.1s' }}>
+            <span>@{profile.username}</span>
+            <VerifiedBadge username={profile.username} className="w-4 h-4 flex-shrink-0" />
+          </div>
           
           {/* Bio */}
           {profile.bio && (
@@ -177,7 +177,9 @@ const PublicProfile = () => {
                     className="flex-shrink-0 p-2 rounded-full animate-float" 
                     style={{ backgroundColor: `${social.color}20`, animationDelay: `${index * 0.5}s` }}
                   >
-                    <span className="text-xl">{social.emoji}</span>
+                    <div className="w-5 h-5" style={{ color: social.color }}>
+                      {social.icon}
+                    </div>
                   </div>
                   
                   {/* Platform Name */}

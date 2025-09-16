@@ -82,9 +82,9 @@ const DigitalCard = ({ userData, onDownload }) => {
 
             {/* Name and Bio */}
             <div className="mb-6">
-              <div className="flex items-center mb-1">
+              <div className="flex items-center mb-1 space-x-2">
                 <h2 className="text-2xl font-bold">{userData.displayName}</h2>
-                <VerifiedBadge username={userData.username} className="w-6 h-6 ml-2" />
+                <VerifiedBadge username={userData.username} className="w-5 h-5 flex-shrink-0" />
               </div>
               <p className="text-gray-300 text-sm mb-2">{userData.bio || 'IrtzaLink User'}</p>
             </div>
@@ -97,8 +97,11 @@ const DigitalCard = ({ userData, onDownload }) => {
                     key={social.key}
                     className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center"
                     title={social.name}
+                    style={{ backgroundColor: `${social.color}20` }}
                   >
-                    <span className="text-lg">{social.emoji}</span>
+                    <div className="w-5 h-5" style={{ color: social.color }}>
+                      {social.icon}
+                    </div>
                   </div>
                 ))}
               </div>
