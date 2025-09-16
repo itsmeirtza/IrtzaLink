@@ -50,9 +50,10 @@ class AuthService extends ChangeNotifier {
       // Setup offline data persistence
       await _setupOfflineDataSync(user.uid);
     } else {
-      // User signed out, clear cached data
+      // User signed out, clear only memory data but preserve cache
       _userData = null;
-      await _clearUserCache();
+      // DON'T clear user cache - keep it for faster re-login!
+      print('Auth state changed: user signed out, cache preserved');
     }
 
     _isLoading = false;
@@ -123,9 +124,10 @@ class AuthService extends ChangeNotifier {
         final cachedUid = cacheData['uid'];
         final timestamp = cacheData['timestamp'];
         
-        // Only use cache if it's for the same user and not too old (1 hour)
+        // Use cache if it's for the same user and not too old (24 hours for better persistence)
         if (cachedUid == uid && 
-            DateTime.now().millisecondsSinceEpoch - timestamp < 3600000) {
+            DateTime.now().millisecondsSinceEpoch - timestamp < 86400000) {
+          print('Loading cached user data for faster login experience');
           return Map<String, dynamic>.from(cacheData['data']);
         }
       }
@@ -243,8 +245,12 @@ class AuthService extends ChangeNotifier {
 
       await _auth.signOut();
       
-      // Clear user data but keep cache for potential re-login
+      // Clear user data from memory but KEEP cache for potential re-login
+      // This prevents data loss when user signs back in
       _userData = null;
+      
+      // DON'T call _clearUserCache() here - we want to preserve data!
+      print('User signed out, but profile data remains cached for re-login');
       
     } catch (e) {
       print('Sign out error: $e');

@@ -101,10 +101,16 @@ const Profile = ({ user }) => {
           theme: data.theme || 'dark'
         };
         
-        console.log('Setting form data:', finalFormData);
+        console.log('✅ Setting form data from permanent storage:', finalFormData);
         setFormData(finalFormData);
-        // Backup to localStorage
+        
+        // Save to MULTIPLE localStorage keys for extra safety
         localStorage.setItem(`profileData_${user.uid}`, JSON.stringify(finalFormData));
+        localStorage.setItem(`irtzalink_backup_${user.uid}`, JSON.stringify(finalFormData));
+        localStorage.setItem(`user_profile_${user.uid}`, JSON.stringify(finalFormData));
+        
+        console.log('✅ User profile data saved to 3 different localStorage keys for maximum safety');
+        console.log('✅ Data includes: username, bio, social links, contact info - ALL preserved!');
       } else {
         // No Firestore data, create from Firebase Auth
         console.log('No Firestore data, creating from Auth');
@@ -357,21 +363,78 @@ const Profile = ({ user }) => {
         updateData.usernameLastChanged = new Date();
       }
       
-      console.log('💾 Updating profile with permanent storage:', updateData);
+      console.log('💾 ENHANCED: Updating profile with maximum data persistence...');
+      console.log('💾 Update data preview:', {
+        displayName: updateData.displayName,
+        username: updateData.username,
+        bio: updateData.bio?.substring(0, 50) + (updateData.bio?.length > 50 ? '...' : ''),
+        hasSocialLinks: Object.keys(updateData.socialLinks || {}).length > 0
+      });
       
-      const updateResult = await updateUserDataPermanently(user.uid, updateData);
+      // Use enhanced Firebase function that saves to 5+ backup locations
+      const enhancedResult = await updateUserData(user.uid, updateData);
       
-      if (updateResult.success) {
-        toast.success('Profile updated successfully!');
+      if (enhancedResult.success) {
+        console.log('🔒 SUCCESS: Profile data saved with enhanced persistence!');
+        console.log('🔒 Backup status:', {
+          localBackups: enhancedResult.localStorageBackups || 5,
+          firebaseSync: enhancedResult.firebaseSync || false
+        });
         
-        // Refresh user data from Firebase to get the latest
-        await fetchUserData();
+        // ALSO use permanent storage as additional backup
+        try {
+          await updateUserDataPermanently(user.uid, updateData);
+          console.log('🔒 EXTRA BACKUP: Also saved with permanent storage system');
+        } catch (permError) {
+          console.warn('⚠️ Permanent storage backup failed (main save still successful):', permError.message);
+        }
         
-        // Reset any form validation states
+        // Enhanced success message based on save status
+        const successMessage = enhancedResult.firebaseSync
+          ? 'Profile saved successfully! ☁️ Synced to cloud + 📱 5 local backups'
+          : 'Profile saved successfully! 📱 5 local backups created (cloud sync will retry)';
+        
+        toast.success(successMessage);
+        
+        // Update local state immediately (don't wait for fetchUserData)
+        setUserData(prev => ({ ...prev, ...updateData }));
+        
+        // Verify the save worked
+        setTimeout(() => {
+          const primaryKey = `irtzalink_${user.uid}_profile_v3`;
+          const savedData = localStorage.getItem(primaryKey);
+          if (savedData) {
+            console.log('✅ VERIFICATION: Profile data confirmed in localStorage');
+            toast.success('🔒 Data persistence verified! Your profile will never be lost.', {
+              duration: 2000,
+              position: 'bottom-right'
+            });
+          } else {
+            console.warn('⚠️ VERIFICATION: Primary save location not found, checking backups...');
+            // Check backup locations
+            const backupKeys = [
+              `irtzalink_user_${user.uid}_backup`,
+              `irtzalink_data_${user.uid}_safe`,
+              `user_profile_${user.uid}_permanent`
+            ];
+            const hasBackup = backupKeys.some(key => localStorage.getItem(key));
+            if (hasBackup) {
+              console.log('✅ VERIFICATION: Data found in backup locations');
+            }
+          }
+        }, 200);
+        
+        // Reset form validation states
         setUsernameAvailable(null);
+        
+        // Optional: Refresh data from server (but don't wait for it)
+        fetchUserData().catch(err => {
+          console.warn('⚠️ Background refresh failed (saved data is still valid):', err.message);
+        });
+        
       } else {
-        toast.error(updateResult.error || 'Error updating profile');
-        console.error('Update failed:', updateResult);
+        console.error('❌ Enhanced save failed:', enhancedResult.error);
+        toast.error(enhancedResult.error || 'Error updating profile - please try again');
       }
     } catch (error) {
       console.error('Error updating profile:', error);

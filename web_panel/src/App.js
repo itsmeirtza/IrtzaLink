@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
 import { userDataManager } from './services/userDataManager';
 import { permanentStorage, loadUserDataPermanently } from './services/permanentStorage';
+// Import diagnostics for easier debugging
+import './utils/dataPersistenceDiagnostics';
 
 // Components
 import Navbar from './components/Navbar';
@@ -29,6 +31,7 @@ import AboutUs from './pages/AboutUs';
 import FollowTest from './pages/FollowTest';
 import FollowersPage from './pages/FollowersPage';
 import FollowingPage from './pages/FollowingPage';
+import DataPersistenceTest from './pages/DataPersistenceTest';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -143,19 +146,23 @@ function App() {
           }));
         }
       } else {
+        console.log('🚪 User signed out - PRESERVING ALL DATA in localStorage');
         setUser(null);
-        // Keep cached data but remove sensitive localStorage data only
-        const storedData = localStorage.getItem('userData');
-        if (storedData) {
-          try {
-            const userData = JSON.parse(storedData);
-            // Keep the cached data in userDataManager but clear sensitive localStorage
-            localStorage.removeItem('userData');
-            console.log('User signed out but data cache preserved for next login');
-          } catch (e) {
-            localStorage.removeItem('userData');
-          }
-        }
+        
+        // CRITICAL FIX: NEVER clear localStorage data on logout!
+        // This was the root cause of data loss on sign-in cycles
+        // All user profile data, social links, username, bio should persist
+        
+        // Keep all IrtzaLink data in localStorage
+        const allKeys = Object.keys(localStorage);
+        const irtzaLinkKeys = allKeys.filter(key => key.startsWith('irtzalink_'));
+        
+        console.log(`🔒 Preserving ${irtzaLinkKeys.length} localStorage keys for instant data recovery:`);
+        irtzaLinkKeys.forEach(key => {
+          console.log(`🔒 Preserved: ${key}`);
+        });
+        
+        console.log('✅ ALL user data preserved - no data loss on re-login!');
       }
       setLoading(false);
     });
@@ -253,6 +260,7 @@ function App() {
                 <Route path="/settings" element={<Settings user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/admin" element={<Admin user={user} />} />
                 <Route path="/follow-test" element={<FollowTest user={user} />} />
+                <Route path="/data-test" element={<DataPersistenceTest user={user} />} />
                 <Route path="/user/:userId" element={<PublicUserProfile currentUser={user} />} />
                 <Route path="/user/:userId/followers" element={<FollowersPage currentUser={user} />} />
                 <Route path="/user/:userId/following" element={<FollowingPage currentUser={user} />} />

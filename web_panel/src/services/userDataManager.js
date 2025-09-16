@@ -248,21 +248,27 @@ class UserDataManager {
 
   // Clear cache for user (useful on logout) - BUT keep essential data
   clearUserCache(userId) {
-    // Only clear sensitive data, keep profile and follow info cached
-    // This prevents data loss on sign out/in cycles
+    // IMPROVED: Only clear session data, preserve ALL user profile data
+    // This completely prevents data loss on sign out/in cycles
     
-    // Clear only auth-sensitive data
-    const sensitiveKeys = [`irtzalink_${userId}_auth`, `irtzalink_${userId}_session`];
-    sensitiveKeys.forEach(key => {
+    // Clear only session-related data, not profile data
+    const sessionKeys = [
+      `irtzalink_${userId}_session`,
+      `irtzalink_${userId}_auth_token`,
+      `irtzalink_${userId}_temp_data`
+    ];
+    
+    sessionKeys.forEach(key => {
       localStorage.removeItem(key);
     });
     
-    // Remove from memory cache but keep localStorage data
+    // Remove from memory cache but PRESERVE all localStorage profile data
     const cacheKey = this.getCacheKey(userId);
     this.cache.delete(cacheKey);
     
-    // Keep profile data, follows, followers cached for better UX
-    console.log('Keeping user profile and follow data cached for faster re-login');
+    // Keep ALL user data cached: profile, links, follows, followers, settings
+    console.log('✅ Session data cleared but ALL user profile data preserved for instant re-login');
+    console.log('✅ User will not lose any links, username, bio, or social links on sign-in');
   }
 
   // Clear all cache (useful for app reset)

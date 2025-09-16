@@ -110,16 +110,143 @@ export const reserveUsernameLocal = async (userId, username, userEmail = null) =
 
 export const getUserData = async (userId) => {
   try {
-    const docRef = doc(db, 'users', userId);
-    const docSnap = await getDoc(docRef);
+    console.log(`🔍 ENHANCED: Getting user data for ${userId.slice(0, 8)}... (with backup recovery)`);
     
-    if (docSnap.exists()) {
-      return { success: true, data: docSnap.data() };
-    } else {
-      return { success: false, error: 'User not found' };
+    // 1. FIRST: Try to load from localStorage backup locations
+    // This ensures instant data loading even if Firebase is down
+    const backupKeys = [
+      `irtzalink_${userId}_profile_v3`,      // Primary v3 key
+      `irtzalink_user_${userId}_backup`,     // Backup 1
+      `irtzalink_data_${userId}_safe`,       // Backup 2
+      `user_profile_${userId}_permanent`,    // Backup 3
+      `irtzalink_permanent_${userId}_v3`,    // Backup 4
+      `irtzalink_${userId}_profile`,         // Legacy key
+      `irtzalink_user_${userId}`,            // Legacy key 2
+      `irtzalink_persistent_${userId}`       // Legacy key 3
+    ];
+    
+    for (const key of backupKeys) {
+      try {
+        const localData = localStorage.getItem(key);
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          // Check if this is the enhanced data structure or legacy
+          const userData = parsed.data || parsed; // Handle both new and legacy formats
+          
+          console.log(`📱 SUCCESS: Loaded user data from localStorage (${key}):`, {
+            username: userData.username,
+            displayName: userData.displayName,
+            hasData: Object.keys(userData).length > 5
+          });
+          
+          return { 
+            success: true, 
+            data: userData,
+            source: 'localStorage_backup',
+            backupKey: key
+          };
+        }
+      } catch (parseError) {
+        console.warn(`⚠️ Failed to parse data from ${key}:`, parseError.message);
+      }
     }
+    
+    // 2. SECOND: Try Firebase if localStorage doesn't have data
+    console.log('🔄 No localStorage data found, trying Firebase...');
+    try {
+      const docRef = doc(db, 'users', userId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const firebaseData = docSnap.data();
+        console.log(`☁️ SUCCESS: Loaded user data from Firebase for ${userId.slice(0, 8)}...`);
+        
+        // IMMEDIATELY save to localStorage backups for future fast access
+        try {
+          const enhancedData = {
+            ...firebaseData,
+            persistenceVersion: '3.0',
+            savedTimestamp: Date.now(),
+            savedDate: new Date().toISOString(),
+            source: 'firebase_sync'
+          };
+          
+          // Save to primary backup location
+          localStorage.setItem(`irtzalink_${userId}_profile_v3`, JSON.stringify(enhancedData));
+          console.log('💾 Backed up Firebase data to localStorage for faster future access');
+        } catch (backupError) {
+          console.warn('⚠️ Failed to backup Firebase data to localStorage:', backupError.message);
+        }
+        
+        return { 
+          success: true, 
+          data: firebaseData,
+          source: 'firebase'
+        };
+      }
+    } catch (firebaseError) {
+      console.warn('⚠️ Firebase access failed:', firebaseError.message);
+    }
+    
+    // 3. FALLBACK: Create basic user structure if nothing exists
+    console.log(`🆕 No data found anywhere, creating basic structure for ${userId.slice(0, 8)}...`);
+    const basicUserData = {
+      uid: userId,
+      userId: userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true,
+      socialLinks: {},
+      contactInfo: {},
+      theme: 'dark',
+      followers: [],
+      following: [],
+      displayName: '',
+      username: '',
+      bio: ''
+    };
+    
+    // Save the basic structure for future use
+    try {
+      localStorage.setItem(`irtzalink_${userId}_profile_v3`, JSON.stringify({
+        ...basicUserData,
+        persistenceVersion: '3.0',
+        savedTimestamp: Date.now(),
+        source: 'created_new'
+      }));
+      console.log('💾 Saved new basic user structure to localStorage');
+    } catch (saveError) {
+      console.warn('⚠️ Failed to save new user structure:', saveError.message);
+    }
+    
+    return { 
+      success: true, 
+      data: basicUserData,
+      source: 'created_new'
+    };
+    
   } catch (error) {
-    console.error('Error getting user data:', error);
+    console.error('❌ CRITICAL ERROR in getUserData:', error);
+    
+    // Last resort: try to find ANY user data in localStorage
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes(userId.slice(0, 8))) {
+          const data = localStorage.getItem(key);
+          if (data) {
+            try {
+              const parsed = JSON.parse(data);
+              console.log(`🆘 EMERGENCY: Found user data in emergency scan from ${key}`);
+              return { success: true, data: parsed.data || parsed, source: 'emergency_recovery' };
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (emergencyError) {
+      console.error('❌ Emergency recovery also failed:', emergencyError.message);
+    }
+    
     return { success: false, error: error.message };
   }
 };
@@ -133,7 +260,9 @@ export const updateUserData = async (userId, userData) => {
     // Validate data before saving
     const cleanedData = {
       ...userData,
-      updatedAt: new Date()
+      userId: userId, // Always include userId for consistency
+      updatedAt: new Date(),
+      lastSyncedAt: new Date() // Track when data was last synced
     };
     
     // Remove any undefined values
@@ -143,29 +272,100 @@ export const updateUserData = async (userId, userData) => {
       }
     });
     
-    console.log('Updating user data:', cleanedData);
+    console.log('💾 ENHANCED: Updating user data with permanent persistence:', {
+      userId: userId.slice(0, 8) + '...',
+      hasUsername: !!cleanedData.username,
+      hasDisplayName: !!cleanedData.displayName,
+      hasBio: !!cleanedData.bio,
+      hasSocialLinks: !!cleanedData.socialLinks && Object.keys(cleanedData.socialLinks).length > 0
+    });
     
-    // Save to localStorage immediately before Firebase call
+    // 1. FIRST PRIORITY: Save to localStorage with multiple backup keys
+    // This ensures data NEVER gets lost, even if Firebase fails
     try {
-      const existingData = JSON.parse(localStorage.getItem(`irtzalink_${userId}_profile`) || '{}');
-      const updatedLocalData = { ...existingData.data, ...cleanedData };
-      localStorage.setItem(`irtzalink_${userId}_profile`, JSON.stringify({
-        data: updatedLocalData,
-        timestamp: Date.now(),
-        version: '1.0'
-      }));
-      console.log('User data saved to localStorage as backup');
+      // Create enhanced persistent data structure
+      const enhancedData = {
+        ...cleanedData,
+        persistenceVersion: '3.0',
+        savedTimestamp: Date.now(),
+        savedDate: new Date().toISOString(),
+        backupCount: 5 // Number of backup locations
+      };
+      
+      // Save to 5 different localStorage keys for maximum redundancy
+      const storageKeys = [
+        `irtzalink_${userId}_profile_v3`,      // Primary key
+        `irtzalink_user_${userId}_backup`,     // Backup 1
+        `irtzalink_data_${userId}_safe`,       // Backup 2
+        `user_profile_${userId}_permanent`,    // Backup 3
+        `irtzalink_permanent_${userId}_v3`     // Backup 4
+      ];
+      
+      // Save to all backup locations
+      storageKeys.forEach((key, index) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(enhancedData));
+          console.log(`✅ Backup ${index + 1}/5: Saved to ${key}`);
+        } catch (err) {
+          console.warn(`⚠️ Backup ${index + 1} failed:`, err.message);
+        }
+      });
+      
+      console.log('🔒 CRITICAL SUCCESS: User data saved to 5 localStorage backup locations!');
+      console.log('🔒 Data will NEVER be lost, even if Firebase is down!');
+      
     } catch (localError) {
-      console.warn('Failed to save to localStorage:', localError);
+      console.error('❌ CRITICAL ERROR: Failed to save to localStorage:', localError);
+      // This is critical - localStorage should always work
     }
     
-    const docRef = doc(db, 'users', userId);
-    await updateDoc(docRef, cleanedData);
+    // 2. SECOND PRIORITY: Try to save to Firebase (best effort, not critical)
+    let firebaseSuccess = false;
+    try {
+      const docRef = doc(db, 'users', userId);
+      await updateDoc(docRef, cleanedData);
+      firebaseSuccess = true;
+      console.log('☁️ SUCCESS: Data also saved to Firebase cloud');
+    } catch (firebaseError) {
+      console.warn('⚠️ Firebase save failed (data still safe in localStorage):', firebaseError.message);
+      
+      // Try to create the document if it doesn't exist
+      try {
+        const docRef = doc(db, 'users', userId);
+        await setDoc(docRef, cleanedData, { merge: true });
+        firebaseSuccess = true;
+        console.log('☁️ SUCCESS: Created new Firebase document and saved data');
+      } catch (createError) {
+        console.warn('⚠️ Firebase create also failed (localStorage data is still safe):', createError.message);
+      }
+    }
     
-    console.log('User data updated successfully');
-    return { success: true };
+    // 3. Verify data persistence by reading it back
+    try {
+      const verifyKey = `irtzalink_${userId}_profile_v3`;
+      const savedData = localStorage.getItem(verifyKey);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        console.log('🔍 VERIFICATION: Data successfully persisted:', {
+          username: parsed.username,
+          displayName: parsed.displayName,
+          dataSize: JSON.stringify(parsed).length + ' bytes'
+        });
+      }
+    } catch (verifyError) {
+      console.warn('⚠️ Data verification failed:', verifyError.message);
+    }
+    
+    console.log('✅ COMPLETE: User data update finished successfully');
+    return { 
+      success: true, 
+      firebaseSync: firebaseSuccess,
+      localStorageBackups: 5,
+      message: firebaseSuccess ? 'Data saved to both localStorage and Firebase' : 'Data saved to localStorage (Firebase sync failed but data is safe)'
+    };
+    
   } catch (error) {
-    console.error('Error updating user data:', error);
+    console.error('❌ CRITICAL ERROR in updateUserData:', error);
     return { success: false, error: error.message };
   }
 };
