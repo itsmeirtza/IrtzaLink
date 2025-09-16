@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, arrayUnion, arrayRemove, writeBatch, deleteField } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { verifiedUsernames, isVerifiedUser } from '../config/verifiedAccounts';
@@ -473,6 +473,55 @@ export const reportAbuse = async (reportData) => {
     return { success: true };
   } catch (error) {
     console.error('Error reporting abuse:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Reset username change cooldown for all users (Admin function)
+export const resetUsernameChangeForAllUsers = async () => {
+  try {
+    console.log('🔄 Starting username change reset for all users...');
+    
+    // Get all users
+    const usersQuery = query(collection(db, 'users'));
+    const usersSnapshot = await getDocs(usersQuery);
+    
+    let resetCount = 0;
+    const batch = writeBatch(db);
+    
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data();
+      
+      // Only reset users who have previously changed their username
+      if (userData.usernameLastChanged) {
+        batch.update(doc.ref, {
+          usernameLastChanged: deleteField(), // Remove the field entirely
+          usernameChangeResetAt: new Date(), // Track when reset was done
+          updatedAt: new Date()
+        });
+        resetCount++;
+      }
+    });
+    
+    if (resetCount > 0) {
+      await batch.commit();
+      console.log(`✅ Reset username change cooldown for ${resetCount} users`);
+      return { 
+        success: true, 
+        message: `Successfully reset username change cooldown for ${resetCount} users`,
+        resetCount 
+      };
+    } else {
+      console.log('ℹ️ No users found with username change history');
+      return { 
+        success: true, 
+        message: 'No users found with username change history',
+        resetCount: 0 
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ Error resetting username changes:', error);
     return { success: false, error: error.message };
   }
 };
