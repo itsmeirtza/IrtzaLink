@@ -353,177 +353,146 @@ export const searchUsersByUsername = async (searchTerm, limitCount = 10) => {
 
 // Social Features
 
-// Follow/Unfollow functions
-export const followUser = async (currentUserId, targetUserId) => {
+// Unified Friend System Functions
+export const sendFriendRequestNew = async (senderId, receiverId) => {
   try {
-    // Get both users' data to check if they're already following each other
-    const [currentUserResult, targetUserResult] = await Promise.all([
-      getUserData(currentUserId),
-      getUserData(targetUserId)
+    // Check if they're already friends
+    const [senderResult, receiverResult] = await Promise.all([
+      getUserData(senderId),
+      getUserData(receiverId)
     ]);
     
-    if (!currentUserResult.success || !targetUserResult.success) {
+    if (!senderResult.success || !receiverResult.success) {
       throw new Error('Failed to get user data');
     }
     
-    const currentUserData = currentUserResult.data;
-    const targetUserData = targetUserResult.data;
+    const senderData = senderResult.data;
+    const receiverData = receiverResult.data;
     
-    // Check if target user is already following current user (for mutual follow = friends)
-    const targetFollowsCurrent = targetUserData.following?.includes(currentUserId) || false;
-    
-    // Check if users are verified (should auto follow back)
-    const isCurrentUserVerified = isVerifiedUser(currentUserData.username);
-    const isTargetUserVerified = isVerifiedUser(targetUserData.username);
-    
-    // Add targetUser to currentUser's following list
-    await updateDoc(doc(db, 'users', currentUserId), {
-      following: arrayUnion(targetUserId),
-      updatedAt: new Date()
-    });
-    
-    // Add currentUser to targetUser's followers list
-    await updateDoc(doc(db, 'users', targetUserId), {
-      followers: arrayUnion(currentUserId),
-      updatedAt: new Date()
-    });
-    
-    // Auto follow back if target user is verified
-    if (isTargetUserVerified && !targetFollowsCurrent) {
-      try {
-        // Target user automatically follows back current user
-        await updateDoc(doc(db, 'users', targetUserId), {
-          following: arrayUnion(currentUserId),
-          updatedAt: new Date()
-        });
-        
-        // Add target user to current user's followers list
-        await updateDoc(doc(db, 'users', currentUserId), {
-          followers: arrayUnion(targetUserId),
-          updatedAt: new Date()
-        });
-        
-        // Since they're now mutual followers, make them friends
-        await Promise.all([
-          updateDoc(doc(db, 'users', currentUserId), {
-            friends: arrayUnion(targetUserId),
-            updatedAt: new Date()
-          }),
-          updateDoc(doc(db, 'users', targetUserId), {
-            friends: arrayUnion(currentUserId),
-            updatedAt: new Date()
-          })
-        ]);
-        
-        // Create follow back notification
-        await createNotification(
-          currentUserId,
-          targetUserId,
-          'follow',
-          'followed you back'
-        );
-        
-        // Mark as friends in return value
-        targetFollowsCurrent = true;
-      } catch (error) {
-        console.error('Error with auto follow back:', error);
-      }
+    // Check if already friends
+    if (senderData.friends?.includes(receiverId)) {
+      return { success: false, error: 'Already friends with this user' };
     }
     
-    // If they're now mutual followers, add them as friends
-    if (targetFollowsCurrent) {
+    // Check if request already sent
+    if (receiverData.friendRequests?.includes(senderId)) {
+      return { success: false, error: 'Friend request already sent' };
+    }
+    
+    // Check if there's a reverse request (they sent us a request)
+    if (senderData.friendRequests?.includes(receiverId)) {
+      // Auto-accept the existing request and become friends
       await Promise.all([
-        updateDoc(doc(db, 'users', currentUserId), {
-          friends: arrayUnion(targetUserId),
+        updateDoc(doc(db, 'users', senderId), {
+          friendRequests: arrayRemove(receiverId),
+          friends: arrayUnion(receiverId),
           updatedAt: new Date()
         }),
-        updateDoc(doc(db, 'users', targetUserId), {
-          friends: arrayUnion(currentUserId),
+        updateDoc(doc(db, 'users', receiverId), {
+          sentFriendRequests: arrayRemove(senderId),
+          friends: arrayUnion(senderId),
           updatedAt: new Date()
         })
       ]);
       
-      // Create friend notification for both users
+      // Create friend notifications for both users
       await Promise.all([
         createNotification(
-          targetUserId,
-          currentUserId,
-          'friend',
-          'You are now friends'
+          receiverId,
+          senderId,
+          'friend_accepted',
+          'accepted your friend request'
         ),
         createNotification(
-          currentUserId,
-          targetUserId,
-          'friend',
+          senderId,
+          receiverId,
+          'friend_accepted',
           'You are now friends'
         )
       ]);
-    } else {
-      // Create follow notification
-      await createNotification(
-        targetUserId,
-        currentUserId,
-        'follow',
-        'started following you'
-      );
+      
+      return { success: true, becameFriends: true };
     }
     
-    return { success: true, areFriends: targetFollowsCurrent };
+    // Send new friend request
+    await Promise.all([
+      updateDoc(doc(db, 'users', receiverId), {
+        friendRequests: arrayUnion(senderId),
+        updatedAt: new Date()
+      }),
+      updateDoc(doc(db, 'users', senderId), {
+        sentFriendRequests: arrayUnion(receiverId),
+        updatedAt: new Date()
+      })
+    ]);
+    
+    // Create notification
+    await createNotification(
+      receiverId,
+      senderId,
+      'friend_request',
+      'sent you a friend request'
+    );
+    
+    return { success: true, requestSent: true };
   } catch (error) {
-    console.error('Error following user:', error);
+    console.error('Error sending friend request:', error);
     return { success: false, error: error.message };
   }
 };
 
-export const unfollowUser = async (currentUserId, targetUserId) => {
+export const removeFriend = async (currentUserId, friendId) => {
   try {
-    // Get both users' data to check if they were friends
+    // Remove from both users' friends list
+    await Promise.all([
+      updateDoc(doc(db, 'users', currentUserId), {
+        friends: arrayRemove(friendId),
+        updatedAt: new Date()
+      }),
+      updateDoc(doc(db, 'users', friendId), {
+        friends: arrayRemove(currentUserId),
+        updatedAt: new Date()
+      })
+    ]);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error removing friend:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get user's relationship status with another user
+export const getUserRelationshipStatus = async (currentUserId, targetUserId) => {
+  try {
     const [currentUserResult, targetUserResult] = await Promise.all([
       getUserData(currentUserId),
       getUserData(targetUserId)
     ]);
     
     if (!currentUserResult.success || !targetUserResult.success) {
-      throw new Error('Failed to get user data');
+      return { success: false, error: 'Failed to get user data' };
     }
     
     const currentUserData = currentUserResult.data;
     const targetUserData = targetUserResult.data;
     
-    // Check if they were friends (both following each other)
-    const wereFriends = currentUserData.friends?.includes(targetUserId) || 
-                       (currentUserData.following?.includes(targetUserId) && 
-                        targetUserData.following?.includes(currentUserId));
+    // Check various relationship statuses
+    const areFriends = currentUserData.friends?.includes(targetUserId) || false;
+    const sentRequest = currentUserData.sentFriendRequests?.includes(targetUserId) || false;
+    const receivedRequest = currentUserData.friendRequests?.includes(targetUserId) || false;
     
-    // Remove targetUser from currentUser's following list
-    await updateDoc(doc(db, 'users', currentUserId), {
-      following: arrayRemove(targetUserId),
-      updatedAt: new Date()
-    });
-    
-    // Remove currentUser from targetUser's followers list
-    await updateDoc(doc(db, 'users', targetUserId), {
-      followers: arrayRemove(currentUserId),
-      updatedAt: new Date()
-    });
-    
-    // If they were friends, remove from friends list
-    if (wereFriends) {
-      await Promise.all([
-        updateDoc(doc(db, 'users', currentUserId), {
-          friends: arrayRemove(targetUserId),
-          updatedAt: new Date()
-        }),
-        updateDoc(doc(db, 'users', targetUserId), {
-          friends: arrayRemove(currentUserId),
-          updatedAt: new Date()
-        })
-      ]);
-    }
-    
-    return { success: true };
+    return {
+      success: true,
+      status: {
+        areFriends,
+        sentRequest,
+        receivedRequest,
+        canSendRequest: !areFriends && !sentRequest && !receivedRequest
+      }
+    };
   } catch (error) {
-    console.error('Error unfollowing user:', error);
+    console.error('Error getting relationship status:', error);
     return { success: false, error: error.message };
   }
 };

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserData, getUserAnalytics, searchUsersByUsername } from '../services/firebase';
+import { getUserData, searchUsersByUsername, sendFriendRequestNew, getUserRelationshipStatus } from '../services/firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';
+import LiveAnalytics from '../components/LiveAnalytics';
+import FriendsManager from '../components/FriendsManager';
 import QRCode from 'react-qr-code';
+import toast from 'react-hot-toast';
 import { 
   UserCircleIcon, 
   ChartBarIcon, 
@@ -28,6 +31,7 @@ const Dashboard = ({ user }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [friendRequestLoading, setFriendRequestLoading] = useState({});
 
   useEffect(() => {
     fetchUserData();
@@ -142,6 +146,33 @@ const Dashboard = ({ user }) => {
     window.searchTimeout = setTimeout(() => {
       handleSearch(query);
     }, 300);
+  };
+
+  const handleSendFriendRequest = async (targetUserId, event) => {
+    event.stopPropagation();
+    setFriendRequestLoading(prev => ({ ...prev, [targetUserId]: true }));
+    
+    try {
+      const result = await sendFriendRequestNew(user.uid, targetUserId);
+      if (result.success) {
+        if (result.becameFriends) {
+          toast.success('You are now friends!');
+        } else {
+          toast.success('Friend request sent!');
+        }
+        // Refresh search results to show updated status
+        if (searchQuery.trim()) {
+          handleSearch(searchQuery.trim());
+        }
+      } else {
+        toast.error(result.error || 'Failed to send friend request');
+      }
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast.error('Failed to send friend request');
+    } finally {
+      setFriendRequestLoading(prev => ({ ...prev, [targetUserId]: false }));
+    }
   };
 
   if (loading) {
@@ -268,7 +299,21 @@ const Dashboard = ({ user }) => {
                             </p>
                           )}
                         </div>
-                        <UsersIcon className="w-4 h-4 text-gray-400" />
+                        
+                        {/* Friend Request Button */}
+                        {foundUser.uid !== user.uid && (
+                          <button
+                            onClick={(e) => handleSendFriendRequest(foundUser.uid, e)}
+                            disabled={friendRequestLoading[foundUser.uid]}
+                            className="ml-2 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-500 border border-blue-300 hover:border-blue-400 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                          >
+                            {friendRequestLoading[foundUser.uid] ? (
+                              <div className="animate-spin w-3 h-3 border border-blue-500 border-t-transparent rounded-full"></div>
+                            ) : (
+                              'Add Friend'
+                            )}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -390,37 +435,21 @@ const Dashboard = ({ user }) => {
         </div>
       )}
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="card p-6">
-              <div className="flex items-center">
-                <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                  <Icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {stat.title}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {stat.value}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      {/* Live Analytics Section */}
+      <div className="mb-8">
+        <LiveAnalytics user={user} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Friends Manager Section */}
+      <FriendsManager user={user} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
         {/* Quick Actions */}
         <div className="card p-6">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             Quick Actions
           </h3>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {quickActions.map((action, index) => {
               const Icon = action.icon;
               return (
@@ -443,51 +472,6 @@ const Dashboard = ({ user }) => {
                 </Link>
               );
             })}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="card p-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Recent Activity
-          </h3>
-          {recentActivity.length > 0 ? (
-            <div className="space-y-3">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-2">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      activity.type === 'profile_visit' ? 'bg-blue-500' : 'bg-green-500'
-                    }`} />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {activity.type === 'profile_visit' ? 'Profile viewed' : 'QR code scanned'}
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-500">
-                    {activity.timestamp?.toDate ? 
-                      activity.timestamp.toDate().toLocaleDateString() : 
-                      'Recently'
-                    }
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <ChartBarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
-                No activity yet. Share your profile to get started!
-              </p>
-            </div>
-          )}
-          
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Link
-              to="/analytics"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium"
-            >
-              View detailed analytics →
-            </Link>
           </div>
         </div>
       </div>

@@ -36,6 +36,37 @@ function App() {
   const [isChatMinimized, setIsChatMinimized] = useState(false);
   const [isChatManagerOpen, setIsChatManagerOpen] = useState(false);
 
+  // Initialize user data from localStorage on app start
+  useEffect(() => {
+    const initializeUserData = async () => {
+      const storedUserData = localStorage.getItem('userData');
+      if (storedUserData && !user) {
+        try {
+          const parsedUserData = JSON.parse(storedUserData);
+          // Check if user is still authenticated
+          if (auth.currentUser && auth.currentUser.uid === parsedUserData.uid) {
+            // Restore user data from localStorage temporarily
+            setUser({
+              uid: parsedUserData.uid,
+              email: parsedUserData.email,
+              displayName: parsedUserData.displayName,
+              photoURL: parsedUserData.photoURL,
+              userData: parsedUserData.userData
+            });
+          } else {
+            // Clear invalid stored data
+            localStorage.removeItem('userData');
+          }
+        } catch (error) {
+          console.error('Error restoring user data:', error);
+          localStorage.removeItem('userData');
+        }
+      }
+    };
+
+    initializeUserData();
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -50,15 +81,40 @@ function App() {
               userData: result.data
             };
             setUser(enhancedUser);
+            
+            // Store user data in localStorage for persistence
+            localStorage.setItem('userData', JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              userData: result.data
+            }));
           } else {
             setUser(user);
+            // Store basic user data even if Firestore fetch fails
+            localStorage.setItem('userData', JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL
+            }));
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
           setUser(user);
+          // Store basic user data even if there's an error
+          localStorage.setItem('userData', JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL
+          }));
         }
       } else {
         setUser(null);
+        // Clear user data from localStorage on sign out
+        localStorage.removeItem('userData');
       }
       setLoading(false);
     });

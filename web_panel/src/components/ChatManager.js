@@ -22,7 +22,7 @@ const ChatManager = ({ user, isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen && user) {
-      fetchFollowingUsers();
+      fetchFriends();
     }
   }, [isOpen, user]);
 
@@ -53,20 +53,20 @@ const ChatManager = ({ user, isOpen, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchFollowingUsers = async () => {
+  const fetchFriends = async () => {
     setLoading(true);
     try {
       const userResult = await getUserData(user.uid);
-      if (userResult.success && userResult.data.following) {
-        const followingIds = userResult.data.following;
+      if (userResult.success && userResult.data.friends) {
+        const friendIds = userResult.data.friends;
         
-        // Get details of following users
-        const followingDetails = await Promise.all(
-          followingIds.map(async (followingId) => {
-            const userDetails = await getUserData(followingId);
+        // Get details of friend users
+        const friendDetails = await Promise.all(
+          friendIds.map(async (friendId) => {
+            const userDetails = await getUserData(friendId);
             if (userDetails.success) {
               return {
-                id: followingId,
+                id: friendId,
                 ...userDetails.data
               };
             }
@@ -74,10 +74,13 @@ const ChatManager = ({ user, isOpen, onClose }) => {
           })
         );
         
-        setChatUsers(followingDetails.filter(Boolean));
+        setChatUsers(friendDetails.filter(Boolean));
+      } else {
+        setChatUsers([]);
       }
     } catch (error) {
-      console.error('Error fetching following users:', error);
+      console.error('Error fetching friends:', error);
+      setChatUsers([]);
     } finally {
       setLoading(false);
     }
@@ -188,10 +191,10 @@ const ChatManager = ({ user, isOpen, onClose }) => {
               <div className="p-8 text-center">
                 <UsersIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  No chats available
+                  No friends to chat with
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Follow users to chat with them
+                  Add friends to start chatting
                 </p>
               </div>
             )}
