@@ -1,14 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { resetUsernameChangeForAllUsers } from '../services/firebase';
 import toast from 'react-hot-toast';
-import { UserIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ClockIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon, KeyIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 
 const AdminPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [resetStats, setResetStats] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
-  // Check if current user is admin (you can modify this logic)
-  const isAdmin = user?.email === 'irtzajutt2005@gmail.com'; // Your admin email
+  // Admin credentials (in production, this should be encrypted/hashed)
+  const ADMIN_CREDENTIALS = {
+    username: 'adminirtza',
+    password: '@Irtzahoonyaar12',
+    email: 'irtzajutt2005@gmail.com'
+  };
+
+  // Check if user is logged in admin
+  useEffect(() => {
+    const savedAuth = sessionStorage.getItem('admin_authenticated');
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Check if current user has admin email
+  const hasAdminEmail = user?.email === ADMIN_CREDENTIALS.email;
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginLoading(true);
+
+    try {
+      // Simulate login delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      if (loginData.username === ADMIN_CREDENTIALS.username && loginData.password === ADMIN_CREDENTIALS.password) {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('admin_authenticated', 'true');
+        toast.success('Admin login successful!');
+        setLoginData({ username: '', password: '' });
+      } else {
+        toast.error('Invalid username or password');
+      }
+    } catch (error) {
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('admin_authenticated');
+    setLoginData({ username: '', password: '' });
+    toast.success('Logged out successfully');
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setResetLoading(true);
+
+    try {
+      if (resetEmail === ADMIN_CREDENTIALS.email) {
+        // Simulate sending email
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // In a real app, you would send an email here
+        toast.success(`Password reset instructions sent to ${resetEmail}`);
+        toast.info('Password reset code: RESET2024 (Check your email)');
+        
+        setShowForgotPassword(false);
+        setResetEmail('');
+      } else {
+        toast.error('Email not found or not authorized for admin access');
+      }
+    } catch (error) {
+      toast.error('Failed to send reset email');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setLoginData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleUsernameReset = async () => {
     if (!window.confirm('Are you sure you want to reset username change cooldown for ALL users? This will allow everyone to change their username once more.')) {
@@ -33,7 +115,8 @@ const AdminPanel = ({ user }) => {
     }
   };
 
-  if (!isAdmin) {
+  // Check if user has admin email first
+  if (!hasAdminEmail) {
     return (
       <div className="card p-6 text-center">
         <UserIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -41,8 +124,152 @@ const AdminPanel = ({ user }) => {
           Admin Access Required
         </h3>
         <p className="text-gray-600 dark:text-gray-400">
-          You don't have permission to access admin functions.
+          You must be logged in with the admin email to access this panel.
         </p>
+        <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+          Required email: {ADMIN_CREDENTIALS.email}
+        </p>
+      </div>
+    );
+  }
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div className="card p-8 max-w-md mx-auto">
+          <div className="text-center mb-6">
+            <KeyIcon className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Admin Login
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Enter your admin credentials to access the panel
+            </p>
+          </div>
+
+          {!showForgotPassword ? (
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={loginData.username}
+                  onChange={handleInputChange}
+                  className="input-field"
+                  placeholder="Enter admin username"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={loginData.password}
+                    onChange={handleInputChange}
+                    className="input-field pr-12"
+                    placeholder="Enter admin password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loginLoading || !loginData.username || !loginData.password}
+                className="w-full btn-primary flex items-center justify-center space-x-2"
+              >
+                {loginLoading ? (
+                  <>
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    <span>Logging in...</span>
+                  </>
+                ) : (
+                  <>
+                    <KeyIcon className="w-4 h-4" />
+                    <span>Login to Admin Panel</span>
+                  </>
+                )}
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Admin Email
+                </label>
+                <input
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="Enter your admin email"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading || !resetEmail}
+                className="w-full btn-primary flex items-center justify-center space-x-2"
+              >
+                {resetLoading ? (
+                  <>
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <EnvelopeIcon className="w-4 h-4" />
+                    <span>Send Reset Email</span>
+                  </>
+                )}
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetEmail('');
+                  }}
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:underline"
+                >
+                  Back to Login
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     );
   }
@@ -50,9 +277,25 @@ const AdminPanel = ({ user }) => {
   return (
     <div className="space-y-6">
       <div className="card p-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-          🔧 Admin Panel
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            🔧 Admin Panel
+          </h2>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Logged in as: <strong>{ADMIN_CREDENTIALS.username}</strong>
+            </span>
+            <button
+              onClick={handleLogout}
+              className="btn-secondary flex items-center space-x-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
         
         {/* Username Reset Section */}
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
