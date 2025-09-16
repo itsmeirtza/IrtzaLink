@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getUserData, followUser, unfollowUser, trackProfileVisit } from '../services/firebase';
+import { getUserData, sendFriendRequestNew, acceptFriendRequest, removeFriend, getUserRelationshipStatus, trackProfileVisit } from '../services/firebase';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -18,9 +18,12 @@ const PublicUserProfile = ({ currentUser }) => {
   const { userId } = useParams();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [followStatus, setFollowStatus] = useState('none'); // none, following, follow_back, friends
-  const [isFollowingMe, setIsFollowingMe] = useState(false);
-  const [areFriends, setAreFriends] = useState(false);
+  const [relationshipStatus, setRelationshipStatus] = useState({
+    areFriends: false,
+    sentRequest: false,
+    receivedRequest: false,
+    canSendRequest: false
+  });
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -52,90 +55,66 @@ const PublicUserProfile = ({ currentUser }) => {
     if (!currentUser || !userId) return;
 
     try {
-      // Get fresh data for both users
-      const [currentUserResult, targetUserResult] = await Promise.all([
-        getUserData(currentUser.uid),
-        getUserData(userId)
-      ]);
-      
-      if (currentUserResult.success && targetUserResult.success) {
-        const currentUserData = currentUserResult.data;
-        const targetUserData = targetUserResult.data;
-        
-        // Update target user data to reflect fresh data
-        setUserData(targetUserData);
-        
-        // Check if target user is following me
-        const targetIsFollowingMe = targetUserData.following?.includes(currentUser.uid) || false;
-        setIsFollowingMe(targetIsFollowingMe);
-        
-        // Check if current user is following this user
-        const iAmFollowingTarget = currentUserData.following?.includes(userId) || false;
-        
-        // Check if they are friends (mutual follow)
-        const areFriendsCheck = currentUserData.friends?.includes(userId) || 
-                               (iAmFollowingTarget && targetIsFollowingMe);
-        setAreFriends(areFriendsCheck);
-        
-        if (areFriendsCheck) {
-          setFollowStatus('friends');
-        } else if (iAmFollowingTarget) {
-          setFollowStatus('following');
-        } else if (targetIsFollowingMe) {
-          setFollowStatus('follow_back');
-        } else {
-          setFollowStatus('none');
-        }
+      const result = await getUserRelationshipStatus(currentUser.uid, userId);
+      if (result.success) {
+        setRelationshipStatus(result.status);
       }
     } catch (error) {
       console.error('Error checking relationship status:', error);
-      setFollowStatus('none');
-      setIsFollowingMe(false);
-      setAreFriends(false);
+      setRelationshipStatus({
+        areFriends: false,
+        sentRequest: false,
+        receivedRequest: false,
+        canSendRequest: false
+      });
     }
   };
 
-  const handleFollow = async () => {
+  const handleFriendAction = async () => {
     if (!currentUser) {
-      toast.error('Please login to follow users');
+      toast.error('Please login to connect with users');
       return;
     }
 
     setActionLoading(true);
     try {
-      if (followStatus === 'none' || followStatus === 'follow_back') {
-        const result = await followUser(currentUser.uid, userId);
+      if (relationshipStatus.canSendRequest) {
+        // Send friend request
+        const result = await sendFriendRequestNew(currentUser.uid, userId);
         if (result.success) {
-          // Check if they became friends
-          if (result.areFriends) {
-            setFollowStatus('friends');
-            setAreFriends(true);
+          if (result.becameFriends) {
             toast.success('You are now friends! 🎉');
           } else {
-            setFollowStatus('following');
-            toast.success('Following user!');
+            toast.success('Friend request sent!');
           }
-          // Refresh both user data to update follower/following counts
           await checkRelationshipStatus();
+        } else {
+          toast.error(result.error || 'Failed to send friend request');
         }
-      } else if (followStatus === 'following' || followStatus === 'friends') {
-        const result = await unfollowUser(currentUser.uid, userId);
+      } else if (relationshipStatus.receivedRequest) {
+        // Accept friend request
+        const result = await acceptFriendRequest(currentUser.uid, userId);
         if (result.success) {
-          // Check if they are still following me
-          if (isFollowingMe) {
-            setFollowStatus('follow_back');
-          } else {
-            setFollowStatus('none');
-          }
-          setAreFriends(false);
-          toast.success('Unfollowed user');
-          // Refresh both user data to update follower/following counts
+          toast.success('Friend request accepted! 🎉');
           await checkRelationshipStatus();
+        } else {
+          toast.error(result.error || 'Failed to accept friend request');
+        }
+      } else if (relationshipStatus.areFriends) {
+        // Remove friend
+        if (window.confirm('Are you sure you want to remove this friend?')) {
+          const result = await removeFriend(currentUser.uid, userId);
+          if (result.success) {
+            toast.success('Friend removed');
+            await checkRelationshipStatus();
+          } else {
+            toast.error(result.error || 'Failed to remove friend');
+          }
         }
       }
     } catch (error) {
-      console.error('Follow action error:', error);
-      toast.error('Error with follow action');
+      console.error('Friend action error:', error);
+      toast.error('Error with friend action');
     } finally {
       setActionLoading(false);
     }
@@ -147,9 +126,9 @@ const PublicUserProfile = ({ currentUser }) => {
       return;
     }
     
-    // Check if current user is following this user
-    if (followStatus !== 'following') {
-      toast.error('You need to follow this user to start a chat');
+    // Check if they are friends
+    if (!relationshipStatus.areFriends) {
+      toast.error('You can only chat with friends. Send a friend request first!');
       return;
     }
     
@@ -246,18 +225,12 @@ const PublicUserProfile = ({ currentUser }) => {
             </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 sm:flex sm:justify-center lg:justify-start gap-4 sm:gap-6 mb-6">
+              <div className="grid grid-cols-3 sm:flex sm:justify-center lg:justify-start gap-4 sm:gap-6 mb-6">
                 <div className="text-center">
                   <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {userData.followers?.length || 0}
+                    {userData.friends?.length || 0}
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Followers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {userData.following?.length || 0}
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Following</div>
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Friends</div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
@@ -276,40 +249,37 @@ const PublicUserProfile = ({ currentUser }) => {
               {/* Action Buttons */}
               {currentUser && currentUser.uid !== userId && (
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-2 sm:gap-3 w-full">
-                  {/* Follow/Unfollow Button */}
+                  {/* Friend Request Button */}
                   <button
-                    onClick={handleFollow}
+                    onClick={handleFriendAction}
                     disabled={actionLoading}
                     className={`flex items-center justify-center space-x-2 px-4 py-3 sm:py-2 rounded-lg font-medium transition-colors duration-200 w-full sm:w-auto ${
-                      followStatus === 'following'
-                        ? 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
-                        : followStatus === 'follow_back'
-                        ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400'
-                        : followStatus === 'friends'
-                        ? 'bg-purple-100 text-purple-600 hover:bg-purple-200 dark:bg-purple-900/20 dark:text-purple-400'
-                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
+                      relationshipStatus.areFriends
+                        ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-600 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
+                        : relationshipStatus.receivedRequest
+                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
+                        : relationshipStatus.sentRequest
+                        ? 'bg-gray-100 text-gray-600 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400'
+                        : relationshipStatus.canSendRequest
+                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
+                        : 'bg-gray-100 text-gray-600 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400'
                     }`}
                   >
                     {actionLoading ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
                     ) : (
                       <>
-                        {followStatus === 'following' || followStatus === 'friends' ? (
+                        {relationshipStatus.areFriends ? (
                           <UserMinusIcon className="w-4 h-4" />
                         ) : (
                           <UserPlusIcon className="w-4 h-4" />
                         )}
                         <span>
-                          {followStatus === 'following' ? 'Following' : 
-                           followStatus === 'follow_back' ? 'Follow Back' : 
-                           followStatus === 'friends' ? 'Friends' : 'Follow'}
+                          {relationshipStatus.areFriends ? 'Friends' : 
+                           relationshipStatus.receivedRequest ? 'Accept Request' : 
+                           relationshipStatus.sentRequest ? 'Request Sent' :
+                           relationshipStatus.canSendRequest ? 'Add Friend' : 'Cannot Add'}
                         </span>
-                        {/* Show following indicator */}
-                        {isFollowingMe && followStatus !== 'friends' && (
-                          <span className="hidden sm:inline text-xs bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 px-2 py-1 rounded-full ml-2">
-                            Follows you
-                          </span>
-                        )}
                       </>
                     )}
                   </button>
