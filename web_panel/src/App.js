@@ -11,6 +11,7 @@ import LoadingSplash from './components/LoadingSplash';
 import Footer from './components/Footer';
 import ChatBox from './components/ChatBox';
 import ChatManager from './components/ChatManager';
+import DebugPanel from './components/DebugPanel';
 
 // Pages
 import Login from './pages/Login';
@@ -307,6 +308,11 @@ function App() {
             isOpen={isChatManagerOpen}
             onClose={closeChatManager}
           />
+        )}
+        
+        {/* Debug Panel - for testing issues */}
+        {user && (
+          <DebugPanel user={user} />
         )}
       </Router>
     </div>

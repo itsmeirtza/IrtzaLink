@@ -59,12 +59,16 @@ service cloud.firestore {
     
     // Notifications collection for follow notifications
     match /notifications/{notificationId} {
-      // Users can read their own notifications
+      // Users can read their own notifications (check toUserId field)
       allow read, update: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+        resource.data.toUserId == request.auth.uid;
         
-      // Allow creating notifications
+      // Allow creating notifications (anyone can create, but validate toUserId in create)
       allow create: if request.auth != null;
+      
+      // Users can also read notifications they created (fromUserId)
+      allow read: if request.auth != null && 
+        resource.data.fromUserId == request.auth.uid;
     }
     
     // Helper functions

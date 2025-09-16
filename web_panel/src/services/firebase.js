@@ -145,6 +145,20 @@ export const updateUserData = async (userId, userData) => {
     
     console.log('Updating user data:', cleanedData);
     
+    // Save to localStorage immediately before Firebase call
+    try {
+      const existingData = JSON.parse(localStorage.getItem(`irtzalink_${userId}_profile`) || '{}');
+      const updatedLocalData = { ...existingData.data, ...cleanedData };
+      localStorage.setItem(`irtzalink_${userId}_profile`, JSON.stringify({
+        data: updatedLocalData,
+        timestamp: Date.now(),
+        version: '1.0'
+      }));
+      console.log('User data saved to localStorage as backup');
+    } catch (localError) {
+      console.warn('Failed to save to localStorage:', localError);
+    }
+    
     const docRef = doc(db, 'users', userId);
     await updateDoc(docRef, cleanedData);
     
