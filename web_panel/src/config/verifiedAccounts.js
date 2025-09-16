@@ -43,10 +43,37 @@ export const removeVerifiedUsername = (username) => {
   return false;
 };
 
+// Special one-time username change permission for specific users
+export const allowedOneTimeChangeEmails = [
+  'irtzaaliwaris@gmail.com',
+  'irtzajutt2005@gmail.com'
+];
+
+// Function to check if user can change username one more time
+export const canChangeUsernameOneTime = (userEmail) => {
+  if (!userEmail) return false;
+  return allowedOneTimeChangeEmails.includes(userEmail.toLowerCase());
+};
+
+// Function to remove email from one-time change list (after they use it)
+export const removeFromOneTimeChange = (userEmail) => {
+  if (!userEmail) return false;
+  const lowerEmail = userEmail.toLowerCase();
+  const index = allowedOneTimeChangeEmails.indexOf(lowerEmail);
+  if (index > -1) {
+    allowedOneTimeChangeEmails.splice(index, 1);
+    return true;
+  }
+  return false;
+};
+
 export default {
   verifiedUsernames,
   isVerifiedUser,
   getVerifiedUsernames,
   addVerifiedUsername,
-  removeVerifiedUsername
+  removeVerifiedUsername,
+  allowedOneTimeChangeEmails,
+  canChangeUsernameOneTime,
+  removeFromOneTimeChange
 };

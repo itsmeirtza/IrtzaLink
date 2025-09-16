@@ -67,9 +67,21 @@ export const checkUsernameAvailabilityLocal = async (username) => {
   }
 };
 
-// Local username reservation (improved with double-check)
-export const reserveUsernameLocal = async (userId, username) => {
+// Local username reservation (improved with double-check and one-time permission)
+export const reserveUsernameLocal = async (userId, username, userEmail = null) => {
   try {
+    // Import one-time change functions
+    const { canChangeUsernameOneTime, removeFromOneTimeChange } = await import('../config/verifiedAccounts');
+    
+    // Get current user data to check if they already have a username
+    const currentUserResult = await getUserData(userId);
+    if (currentUserResult.success && currentUserResult.data.username && userEmail) {
+      // User already has a username, check if they have one-time permission
+      if (!canChangeUsernameOneTime(userEmail)) {
+        return { success: false, error: 'Username can only be changed once. Contact support for assistance.' };
+      }
+    }
+
     // Double-check availability before updating
     const availabilityCheck = await checkUsernameAvailabilityLocal(username);
     if (!availabilityCheck.success || !availabilityCheck.available) {
@@ -80,8 +92,14 @@ export const reserveUsernameLocal = async (userId, username) => {
     await updateDoc(doc(db, 'users', userId), { 
       username: username.toLowerCase(),
       profileURL: `https://irtzalink.vercel.app/${username.toLowerCase()}`,
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      usernameChangedAt: new Date() // Track when username was changed
     });
+    
+    // If user used their one-time permission, remove them from the list
+    if (userEmail && currentUserResult.success && currentUserResult.data.username) {
+      removeFromOneTimeChange(userEmail);
+    }
     
     return { success: true };
   } catch (error) {

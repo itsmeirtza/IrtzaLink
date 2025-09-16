@@ -120,19 +120,31 @@ const Profile = ({ user }) => {
     }
   };
 
-  const handleUsernameChange = (e) => {
+  const handleUsernameChange = async (e) => {
     const username = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     
-    // Check if username was recently changed (within 15 days)
-    if (userData?.usernameLastChanged) {
-      const lastChanged = userData.usernameLastChanged.toDate ? 
-        userData.usernameLastChanged.toDate() : 
-        new Date(userData.usernameLastChanged);
-      const daysSinceChange = Math.floor((new Date() - lastChanged) / (1000 * 60 * 60 * 24));
-      
-      if (daysSinceChange < 15 && userData.username !== username) {
-        toast.error(`Username can only be changed every 15 days. ${15 - daysSinceChange} days remaining.`);
-        return;
+    // Import one-time change function
+    const { canChangeUsernameOneTime } = await import('../config/verifiedAccounts');
+    
+    // Check if user already has a username and if they can change it
+    if (userData?.username && userData.username !== username) {
+      // Check if user has one-time permission
+      if (!canChangeUsernameOneTime(user.email)) {
+        // Check normal 15-day rule for other users
+        if (userData?.usernameLastChanged) {
+          const lastChanged = userData.usernameLastChanged.toDate ? 
+            userData.usernameLastChanged.toDate() : 
+            new Date(userData.usernameLastChanged);
+          const daysSinceChange = Math.floor((new Date() - lastChanged) / (1000 * 60 * 60 * 24));
+          
+          if (daysSinceChange < 15) {
+            toast.error(`Username can only be changed every 15 days. ${15 - daysSinceChange} days remaining.`);
+            return;
+          }
+        } else {
+          toast.error('Username can only be changed once. Contact support for assistance.');
+          return;
+        }
       }
     }
     
@@ -235,6 +247,14 @@ const Profile = ({ user }) => {
       if (formData.username && formData.username !== userData?.username) {
         if (usernameAvailable === false) {
           toast.error('Username is not available');
+          setSaving(false);
+          return;
+        }
+        
+        // Try to reserve the username with one-time permission check
+        const reserveResult = await reserveUsernameLocal(user.uid, formData.username, user.email);
+        if (!reserveResult.success) {
+          toast.error(reserveResult.error);
           setSaving(false);
           return;
         }
