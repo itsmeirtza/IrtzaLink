@@ -82,24 +82,27 @@ const DigitalCard = ({ userData, onDownload }) => {
 
             {/* Name and Bio */}
             <div className="mb-6">
-              <div className="flex items-center mb-1 space-x-2">
-                <h2 className="text-2xl font-bold">{userData.displayName}</h2>
-                <VerifiedBadge username={userData.username} className="w-5 h-5 flex-shrink-0" />
+              <div className="flex items-center mb-2 gap-2">
+                <h2 className="text-2xl font-bold leading-tight">{userData.displayName}</h2>
+                <VerifiedBadge username={userData.username} className="w-6 h-6 flex-shrink-0 mt-1" />
               </div>
-              <p className="text-gray-300 text-sm mb-2">{userData.bio || 'IrtzaLink User'}</p>
+              <p className="text-gray-300 text-sm">{userData.bio || 'IrtzaLink User'}</p>
             </div>
 
             {/* Social Links */}
             {activeSocialLinks.length > 0 && (
-              <div className="flex space-x-3 mb-6">
+              <div className="flex flex-wrap gap-2 mb-6">
                 {activeSocialLinks.map((social) => (
                   <div
                     key={social.key}
-                    className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center"
+                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105"
                     title={social.name}
-                    style={{ backgroundColor: `${social.color}20` }}
+                    style={{ 
+                      backgroundColor: social.color,
+                      border: `2px solid ${social.color}40`
+                    }}
                   >
-                    <div className="w-5 h-5" style={{ color: social.color }}>
+                    <div className="w-6 h-6 text-white">
                       {social.icon}
                     </div>
                   </div>
@@ -108,23 +111,26 @@ const DigitalCard = ({ userData, onDownload }) => {
             )}
 
             {/* Contact Info */}
-            <div className="space-y-2 text-sm">
-              {userData.contactInfo?.phone && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-base">📞</span>
-                  <span>{userData.contactInfo.phone}</span>
-                </div>
-              )}
+            <div className="space-y-3 text-sm">
               {userData.contactInfo?.email && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-base">✉️</span>
-                  <span>{userData.contactInfo.email}</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                    </svg>
+                  </div>
+                  <span className="text-gray-200">{userData.contactInfo.email}</span>
                 </div>
               )}
               {userData.contactInfo?.website && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-base">🌐</span>
-                  <span>{userData.contactInfo.website}</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.559-.499-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.559.499.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.497-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clipRule="evenodd"></path>
+                    </svg>
+                  </div>
+                  <span className="text-gray-200">{userData.contactInfo.website}</span>
                 </div>
               )}
             </div>
