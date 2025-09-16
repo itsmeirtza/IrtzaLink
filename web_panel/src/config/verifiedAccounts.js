@@ -5,6 +5,7 @@
 export const verifiedUsernames = [
   'ialiwaris',
   'itsmeirtza',
+  'hakeemmuhammadnawaz',
   // Add more verified usernames here
   // Example: 'newusername',
 ];

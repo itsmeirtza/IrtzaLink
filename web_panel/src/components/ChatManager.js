@@ -21,10 +21,21 @@ const ChatManager = ({ user, isOpen, onClose }) => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (isOpen && user) {
+    if (isOpen && user && user.uid) {
+      // Reset state when user changes or chat manager opens
+      setChatUsers([]);
+      setActiveChat(null);
+      setMessages([]);
+      setLoading(false);
+      
       fetchFriends();
+    } else if (!user) {
+      // Clear chat data when user logs out
+      setChatUsers([]);
+      setActiveChat(null);
+      setMessages([]);
     }
-  }, [isOpen, user]);
+  }, [isOpen, user?.uid]);
 
   useEffect(() => {
     scrollToBottom();

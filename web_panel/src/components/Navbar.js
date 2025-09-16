@@ -25,13 +25,19 @@ const Navbar = ({ user, darkMode, toggleDarkMode, openChatManager }) => {
 
   // Fetch unread message count
   useEffect(() => {
-    if (user) {
+    if (user && user.uid) {
+      // Reset unread count when user changes
+      setUnreadMessageCount(0);
+      
       fetchUnreadMessageCount();
       // Set up interval to check periodically
       const interval = setInterval(fetchUnreadMessageCount, 30000); // Check every 30 seconds
       return () => clearInterval(interval);
+    } else {
+      // Clear unread count when user logs out
+      setUnreadMessageCount(0);
     }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const fetchUnreadMessageCount = async () => {
     if (user) {

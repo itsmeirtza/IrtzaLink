@@ -19,10 +19,19 @@ const ChatBox = ({ currentUser, chatUser, onClose, isMinimized, onToggleMinimize
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (currentUser && chatUser) {
+    if (currentUser && chatUser && currentUser.uid && chatUser.uid) {
+      // Reset messages when chat users change
+      setMessages([]);
+      setLoading(false);
+      setChatId(null);
+      
       initializeChat();
+    } else {
+      // Clear chat data when users are not available
+      setMessages([]);
+      setChatId(null);
     }
-  }, [currentUser, chatUser]);
+  }, [currentUser?.uid, chatUser?.uid]);
 
   useEffect(() => {
     scrollToBottom();

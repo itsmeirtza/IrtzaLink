@@ -34,9 +34,22 @@ const Dashboard = ({ user }) => {
   const [friendRequestLoading, setFriendRequestLoading] = useState({});
 
   useEffect(() => {
-    fetchUserData();
-    fetchAnalytics();
-  }, [user]);
+    if (user && user.uid) {
+      // Reset state when user changes
+      setUserData(null);
+      setAnalytics({ views: 0, qrScans: 0, totalVisits: 0 });
+      setRecentActivity([]);
+      setLoading(true);
+      
+      fetchUserData();
+      fetchAnalytics();
+    } else {
+      // Clear data when user logs out
+      setUserData(null);
+      setAnalytics({ views: 0, qrScans: 0, totalVisits: 0 });
+      setRecentActivity([]);
+    }
+  }, [user?.uid]);
 
   const fetchUserData = async () => {
     try {
