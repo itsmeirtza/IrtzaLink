@@ -22,24 +22,22 @@ const Profile = ({ user }) => {
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [generatingQR, setGeneratingQR] = useState(false);
 
-  const [formData, setFormData] = useState({
-    displayName: '',
-    username: '',
-    bio: '',
-    photoURL: '',
-    socialLinks: Object.fromEntries(
-      socialPlatforms.map(platform => [platform.key, ''])
-    ),
-    contactInfo: {
-      phone: '',
-      email: '',
-      website: ''
-    },
-    theme: 'dark'
-  });
+  const [formData, setFormData] = useState(null);
 
   useEffect(() => {
     if (user && user.uid) {
+      // Try to restore from localStorage first
+      const backupData = localStorage.getItem(`profileData_${user.uid}`);
+      if (backupData) {
+        try {
+          const parsedData = JSON.parse(backupData);
+          console.log('Restored from localStorage:', parsedData);
+          setFormData(parsedData);
+        } catch (error) {
+          console.error('Failed to parse localStorage data:', error);
+        }
+      }
+      
       fetchUserData();
     }
   }, [user?.uid]);
@@ -47,57 +45,83 @@ const Profile = ({ user }) => {
   const fetchUserData = async () => {
     if (!user?.uid) return;
     
+    console.log('Fetching user data for:', user.uid);
     setLoading(true);
+    
     try {
       const result = await getUserData(user.uid);
+      console.log('Firestore result:', result);
+      
       if (result.success && result.data) {
+        // User exists in Firestore
         const data = result.data;
         setUserData(data);
         
-        // Only update form data if it's significantly different or empty
-        const shouldUpdate = !formData.username || !formData.displayName || 
-                           formData.displayName !== (data.displayName || user.displayName);
+        const finalFormData = {
+          displayName: data.displayName || user.displayName || '',
+          username: data.username || '',
+          bio: data.bio || '',
+          photoURL: data.photoURL || user.photoURL || '',
+          socialLinks: data.socialLinks || Object.fromEntries(
+            socialPlatforms.map(platform => [platform.key, ''])
+          ),
+          contactInfo: data.contactInfo || {
+            phone: '',
+            email: user.email || '',
+            website: ''
+          },
+          theme: data.theme || 'dark'
+        };
         
-        if (shouldUpdate) {
-          const freshFormData = {
-            displayName: data.displayName || user.displayName || formData.displayName || '',
-            username: data.username || formData.username || '',
-            bio: data.bio || formData.bio || '',
-            photoURL: data.photoURL || user.photoURL || formData.photoURL || '',
-            socialLinks: data.socialLinks || formData.socialLinks || Object.fromEntries(
-              socialPlatforms.map(platform => [platform.key, ''])
-            ),
-            contactInfo: data.contactInfo || formData.contactInfo || {
-              phone: '',
-              email: user.email || '',
-              website: ''
-            },
-            theme: data.theme || formData.theme || 'dark'
-          };
-          
-          setFormData(freshFormData);
-        }
-        
-        // Reset username availability check
-        setUsernameAvailable(null);
+        console.log('Setting form data:', finalFormData);
+        setFormData(finalFormData);
+        // Backup to localStorage
+        localStorage.setItem(`profileData_${user.uid}`, JSON.stringify(finalFormData));
       } else {
-        // If no data exists, create default with current form data
-        if (!formData.displayName && user.displayName) {
-          setFormData(prev => ({
-            ...prev,
-            displayName: user.displayName,
-            contactInfo: {
-              ...prev.contactInfo,
-              email: user.email || ''
-            }
-          }));
-        }
+        // No Firestore data, create from Firebase Auth
+        console.log('No Firestore data, creating from Auth');
+        const defaultFormData = {
+          displayName: user.displayName || '',
+          username: '',
+          bio: '',
+          photoURL: user.photoURL || '',
+          socialLinks: Object.fromEntries(
+            socialPlatforms.map(platform => [platform.key, ''])
+          ),
+          contactInfo: {
+            phone: '',
+            email: user.email || '',
+            website: ''
+          },
+          theme: 'dark'
+        };
+        
+        console.log('Setting default form data:', defaultFormData);
+        setFormData(defaultFormData);
+        setUserData(null);
       }
+      
+      setUsernameAvailable(null);
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Don't show error on initial load, just keep existing data
-      if (formData.displayName || formData.username) {
-        console.log('Keeping existing form data due to fetch error');
+      // Create minimal form data on error
+      if (!formData) {
+        const errorFormData = {
+          displayName: user.displayName || '',
+          username: '',
+          bio: '',
+          photoURL: user.photoURL || '',
+          socialLinks: Object.fromEntries(
+            socialPlatforms.map(platform => [platform.key, ''])
+          ),
+          contactInfo: {
+            phone: '',
+            email: user.email || '',
+            website: ''
+          },
+          theme: 'dark'
+        };
+        setFormData(errorFormData);
       }
     } finally {
       setLoading(false);
@@ -105,13 +129,15 @@ const Profile = ({ user }) => {
   };
 
   const handleInputChange = (e, section = null) => {
+    if (!formData) return; // Safety check
+    
     const { name, value } = e.target;
     
     if (section) {
       setFormData(prev => ({
         ...prev,
         [section]: {
-          ...prev[section],
+          ...(prev?.[section] || {}),
           [name]: value
         }
       }));
@@ -329,7 +355,7 @@ const Profile = ({ user }) => {
 
   // Social platforms imported from utils
 
-  if (loading) {
+  if (loading || !formData) {
     return (
       <div className="container mx-auto px-4 py-8">
         <LoadingSpinner size="large" text="Loading your profile..." />
