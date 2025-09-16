@@ -40,61 +40,65 @@ const Profile = ({ user }) => {
 
   useEffect(() => {
     if (user && user.uid) {
-      // Reset state when user changes
-      setLoading(true);
-      setUserData(null);
-      setFormData({
-        displayName: '',
-        username: '',
-        bio: '',
-        photoURL: '',
-        socialLinks: Object.fromEntries(
-          socialPlatforms.map(platform => [platform.key, ''])
-        ),
-        contactInfo: {
-          phone: '',
-          email: '',
-          website: ''
-        },
-        theme: 'dark'
-      });
-      
       fetchUserData();
     }
   }, [user?.uid]);
 
   const fetchUserData = async () => {
+    if (!user?.uid) return;
+    
+    setLoading(true);
     try {
       const result = await getUserData(user.uid);
-      if (result.success) {
+      if (result.success && result.data) {
         const data = result.data;
         setUserData(data);
         
-        // Always update form data with fresh data from database after save
-        const freshFormData = {
-          displayName: data.displayName || user.displayName || '',
-          username: data.username || '',
-          bio: data.bio || '',
-          photoURL: data.photoURL || user.photoURL || '',
-          socialLinks: data.socialLinks || Object.fromEntries(
-            socialPlatforms.map(platform => [platform.key, ''])
-          ),
-          contactInfo: data.contactInfo || {
-            phone: '',
-            email: user.email || '',
-            website: ''
-          },
-          theme: data.theme || 'dark'
-        };
+        // Only update form data if it's significantly different or empty
+        const shouldUpdate = !formData.username || !formData.displayName || 
+                           formData.displayName !== (data.displayName || user.displayName);
         
-        setFormData(freshFormData);
+        if (shouldUpdate) {
+          const freshFormData = {
+            displayName: data.displayName || user.displayName || formData.displayName || '',
+            username: data.username || formData.username || '',
+            bio: data.bio || formData.bio || '',
+            photoURL: data.photoURL || user.photoURL || formData.photoURL || '',
+            socialLinks: data.socialLinks || formData.socialLinks || Object.fromEntries(
+              socialPlatforms.map(platform => [platform.key, ''])
+            ),
+            contactInfo: data.contactInfo || formData.contactInfo || {
+              phone: '',
+              email: user.email || '',
+              website: ''
+            },
+            theme: data.theme || formData.theme || 'dark'
+          };
+          
+          setFormData(freshFormData);
+        }
         
         // Reset username availability check
         setUsernameAvailable(null);
+      } else {
+        // If no data exists, create default with current form data
+        if (!formData.displayName && user.displayName) {
+          setFormData(prev => ({
+            ...prev,
+            displayName: user.displayName,
+            contactInfo: {
+              ...prev.contactInfo,
+              email: user.email || ''
+            }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      toast.error('Error loading profile data');
+      // Don't show error on initial load, just keep existing data
+      if (formData.displayName || formData.username) {
+        console.log('Keeping existing form data due to fetch error');
+      }
     } finally {
       setLoading(false);
     }

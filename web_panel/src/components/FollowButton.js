@@ -15,8 +15,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
   useEffect(() => {
     if (currentUser && targetUser && currentUser.uid !== targetUser.uid) {
       checkRelationship();
+    } else {
+      setRelationship('none');
+      setChecking(false);
     }
-  }, [currentUser?.uid, targetUser?.uid]);
+  }, [currentUser?.uid, targetUser?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkRelationship = async () => {
     setChecking(true);

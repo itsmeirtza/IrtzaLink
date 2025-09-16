@@ -23,6 +23,7 @@ import PublicUserProfile from './pages/PublicUserProfile';
 import ContactUs from './pages/ContactUs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
+import FollowTest from './pages/FollowTest';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -68,47 +69,60 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Ensure we have the latest user data from Firestore
-        try {
-          const { getUserData } = await import('./services/firebase');
-          const result = await getUserData(user.uid);
-          if (result.success) {
-            // Merge Firebase Auth user with Firestore data
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Only update if this is a different user or first time
+        if (!user || user.uid !== firebaseUser.uid) {
+          try {
+            const { getUserData } = await import('./services/firebase');
+            const result = await getUserData(firebaseUser.uid);
+            
             const enhancedUser = {
-              ...user,
-              userData: result.data
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              userData: result.success ? result.data : null
             };
+            
             setUser(enhancedUser);
             
             // Store user data in localStorage for persistence
             localStorage.setItem('userData', JSON.stringify({
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              userData: result.data
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              userData: result.success ? result.data : null
             }));
-          } else {
-            setUser(user);
-            // Store basic user data even if Firestore fetch fails
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+            // Still create user object even if Firestore fails
+            const basicUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              userData: null
+            };
+            
+            setUser(basicUser);
             localStorage.setItem('userData', JSON.stringify({
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL
             }));
           }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          setUser(user);
-          // Store basic user data even if there's an error
-          localStorage.setItem('userData', JSON.stringify({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL
+        } else if (user && user.uid === firebaseUser.uid) {
+          // Same user, just update Firebase Auth properties if needed
+          setUser(prevUser => ({
+            ...prevUser,
+            displayName: firebaseUser.displayName || prevUser.displayName,
+            photoURL: firebaseUser.photoURL || prevUser.photoURL,
+            emailVerified: firebaseUser.emailVerified
           }));
         }
       } else {
@@ -120,7 +134,7 @@ function App() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
@@ -211,6 +225,7 @@ function App() {
                 <Route path="/analytics" element={<Analytics user={user} />} />
                 <Route path="/settings" element={<Settings user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/admin" element={<Admin user={user} />} />
+                <Route path="/follow-test" element={<FollowTest user={user} />} />
                 <Route path="/user/:userId" element={<PublicUserProfile currentUser={user} />} />
                 <Route path="/contact" element={<ContactUs />} />
                 <Route path="/contact-us" element={<Navigate to="/contact" replace />} />

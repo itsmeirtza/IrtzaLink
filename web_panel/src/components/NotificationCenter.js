@@ -20,14 +20,7 @@ const NotificationCenter = ({ user, onNotificationClick }) => {
 
   useEffect(() => {
     if (user && user.uid) {
-      // Reset state when user changes
-      setNotifications([]);
-      setUnreadCount(0);
-      setLoading(false);
-      
-      // Fetch fresh notifications
       fetchNotifications();
-      
       // Set up real-time listener here if needed
     } else {
       // Clear notifications when user logs out
