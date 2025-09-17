@@ -63,7 +63,7 @@ class AuthService extends ChangeNotifier {
   }
   
   // Sign in with email and password
-  Future<bool> signInWithEmailPassword(String email, String password, BuildContext context) async {
+  Future<bool> signInWithEmailAndPassword(String email, String password, BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -124,14 +124,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 }
-
-import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'dart:convert';
-
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

@@ -218,18 +218,7 @@ class UserService extends ChangeNotifier {
   
   // Clear user data
   void clearUserData() {
-    _username = null;
-    _displayName = null;
-    _bio = null;
-    _photoURL = null;
-    _socialLinks.clear();
-    _contactInfo.clear();
-    _qrCodeURL = null;
-    _profileViews = 0;
-    _qrScans = 0;
-    _totalLinks = 0;
-    _linkClicks = 0;
-    notifyListeners();
+    // This file is deprecated - use user_service_new.dart instead
   }
 }
   final FirebaseAuth _auth = FirebaseAuth.instance;

@@ -122,8 +122,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
+        email,
+        password,
+        context,
       );
       
       if (mounted) {
@@ -145,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithGoogle();
+      await authService.signInWithGoogle(context);
       
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');

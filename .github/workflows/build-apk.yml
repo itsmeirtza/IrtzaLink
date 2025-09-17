@@ -27,48 +27,10 @@ jobs:
         flutter-version: '3.24.3'
         channel: 'stable'
         
-    - name: Create dummy google-services.json for build
+    - name: Create google-services.json with real Firebase config
       run: |
         mkdir -p flutter_app/android/app
-        echo '{
-          "project_info": {
-            "project_number": "123456789",
-            "project_id": "irtzalink-demo",
-            "storage_bucket": "irtzalink-demo.appspot.com"
-          },
-          "client": [
-            {
-              "client_info": {
-                "mobilesdk_app_id": "1:123456789:android:abcd1234",
-                "android_client_info": {
-                  "package_name": "com.irtzalink.app"
-                }
-              },
-              "oauth_client": [
-                {
-                  "client_id": "123456789-abcd1234.apps.googleusercontent.com",
-                  "client_type": 3
-                }
-              ],
-              "api_key": [
-                {
-                  "current_key": "AIzaSyDemoKey123456789"
-                }
-              ],
-              "services": {
-                "appinvite_service": {
-                  "other_platform_oauth_client": [
-                    {
-                      "client_id": "123456789-abcd1234.apps.googleusercontent.com",
-                      "client_type": 3
-                    }
-                  ]
-                }
-              }
-            }
-          ],
-          "configuration_version": "1"
-        }' > flutter_app/android/app/google-services.json
+        echo "ewogICJwcm9qZWN0X2luZm8iOiB7CiAgICAicHJvamVjdF9udW1iZXIiOiAiMzQyOTg0Njg1MTMzIiwKICAgICJwcm9qZWN0X2lkIjogImlydHphbGluay00ZDQwNyIsCiAgICAic3RvcmFnZV9idWNrZXQiOiAiaXJ0emFsaW5rLTRkNDA3LmZpcmViYXNlc3RvcmFnZS5hcHAiCiAgfSwKICAiY2xpZW50IjogWwogICAgewogICAgICAiY2xpZW50X2luZm8iOiB7CiAgICAgICAgIm1vYmlsZXNka19hcHBfaWQiOiAiMTozNDI5ODQ2ODUxMzM6YW5kcm9pZDphYjczNWNlYjZjM2Y0MjVmZjM4ZTA0IiwKICAgICAgICAiYW5kcm9pZF9jbGllbnRfaW5mbyI6IHsKICAgICAgICAgICJwYWNrYWdlX25hbWUiOiAiY29tLmlydHphbGluay5hcHAiCiAgICAgICAgfQogICAgICB9LAogICAgICAib2F1dGhfY2xpZW50IjogWwogICAgICAgIHsKICAgICAgICAgICJjbGllbnRfaWQiOiAiMzQyOTg0Njg1MTMzLWRobnRpZ29ibWVwMnJmbTMyMzVxamNyMWNiMWlqZmwxLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwKICAgICAgICAgICJjbGllbnRfdHlwZSI6IDMKICAgICAgICB9CiAgICAgIF0sCiAgICAgICJhcGlfa2V5IjogWwogICAgICAgIHsKICAgICAgICAgICJjdXJyZW50X2tleSI6ICJBSXphU3lCMGJkVWpVQS1pQkVrNnd1YlJxVWtBQXFqdTNCQWlaR3ciCiAgICAgICAgfQogICAgICBdLAogICAgICAic2VydmljZXMiOiB7CiAgICAgICAgImFwcGludml0ZV9zZXJ2aWNlIjogewogICAgICAgICAgIm90aGVyX3BsYXRmb3JtX29hdXRoX2NsaWVudCI6IFsKICAgICAgICAgICAgewogICAgICAgICAgICAgICJjbGllbnRfaWQiOiAiMzQyOTg0Njg1MTMzLWRobnRpZ29ibWVwMnJmbTMyMzVxamNyMWNiMWlqZmwxLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwKICAgICAgICAgICAgICAiY2xpZW50X3R5cGUiOiAzCiAgICAgICAgICAgIH0KICAgICAgICAgIF0KICAgICAgICB9CiAgICAgIH0KICAgIH0KICBdLAogICJjb25maWd1cmF0aW9uX3ZlcnNpb24iOiAiMSIKfQ==" | base64 -d > flutter_app/android/app/google-services.json
 
     - name: Get dependencies
       working-directory: flutter_app

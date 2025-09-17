@@ -30,7 +30,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         elevation: 0,
         actions: [
           PopupMenuButton<String>(
-            value: _selectedPeriod,
             onSelected: (String period) {
               setState(() => _selectedPeriod = period);
               // TODO: Filter data by period
@@ -578,7 +577,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       case 'profile_view': return Icons.visibility;
       case 'qr_scan': return Icons.qr_code_scanner;
       case 'link_click': return Icons.mouse;
-      default: return Icons.activity;
+      default: return Icons.assessment;
     }
   }
 

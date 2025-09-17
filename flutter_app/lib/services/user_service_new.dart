@@ -56,7 +56,7 @@ class UserService extends ChangeNotifier {
       // Always try to get fresh data from Firestore first
       final doc = await _firestore.collection('users').doc(user.uid).get();
       
-      if (doc.exists()) {
+      if (doc.exists) {
         final data = doc.data()!;
         
         debugPrint('✅ User data loaded from Firestore: username=${data['username']}, socialLinks=${(data['socialLinks'] as Map?)?.keys.length ?? 0}');
@@ -77,7 +77,7 @@ class UserService extends ChangeNotifier {
         _linkClicks = data['linkClicks'] ?? 0;
         
         // Generate QR code if missing
-        if (_qrCodeURL.isEmpty) {
+        if (_qrCodeURL?.isEmpty ?? true) {
           await generateQRCode();
         }
         
