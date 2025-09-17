@@ -27,11 +27,14 @@ jobs:
         flutter-version: '3.24.3'
         channel: 'stable'
         
-    - name: Install Android SDK 35
-      shell: bash
-      run: |
-        yes | sdkmanager --licenses > /dev/null || true
-        yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null
+    - name: Setup Android SDK 35
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        build-tools: 35.0.0
+        cmake: false
+        ndk: ''
+        cache: true
         
     - name: Get dependencies
       working-directory: flutter_app
