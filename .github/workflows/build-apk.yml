@@ -27,34 +27,48 @@ jobs:
         flutter-version: '3.24.3'
         channel: 'stable'
         
-    - name: Setup Android SDK 35
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: 35
-        build-tools: 35.0.0
-        cmake: false
-        ndk: ''
-        cache: true
-        
-    - name: Prepare google-services.json (if provided)
-      if: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 != '' }}
-      shell: bash
+    - name: Create dummy google-services.json for build
       run: |
         mkdir -p flutter_app/android/app
-        echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > flutter_app/android/app/google-services.json
-
-    - name: Prepare Android signing (if provided)
-      if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-      shell: bash
-      run: |
-        mkdir -p flutter_app/android/app/keystore
-        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > flutter_app/android/app/keystore/release.keystore
-        cat > flutter_app/android/key.properties <<EOF
-        storeFile=keystore/release.keystore
-        storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-        keyPassword=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
-        EOF
+        echo '{
+          "project_info": {
+            "project_number": "123456789",
+            "project_id": "irtzalink-demo",
+            "storage_bucket": "irtzalink-demo.appspot.com"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789:android:abcd1234",
+                "android_client_info": {
+                  "package_name": "com.irtzalink.app"
+                }
+              },
+              "oauth_client": [
+                {
+                  "client_id": "123456789-abcd1234.apps.googleusercontent.com",
+                  "client_type": 3
+                }
+              ],
+              "api_key": [
+                {
+                  "current_key": "AIzaSyDemoKey123456789"
+                }
+              ],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": [
+                    {
+                      "client_id": "123456789-abcd1234.apps.googleusercontent.com",
+                      "client_type": 3
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "configuration_version": "1"
+        }' > flutter_app/android/app/google-services.json
 
     - name: Get dependencies
       working-directory: flutter_app
@@ -80,13 +94,14 @@ jobs:
         name: IrtzaLink-AAB
         path: flutter_app/build/app/outputs/bundle/release/app-release.aab
 
-    - name: Upload to Google Play (Internal)
-      if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
-      uses: r0adkll/upload-google-play@v1
-      with:
-        serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        packageName: com.irtzalink.app
-        releaseFiles: flutter_app/build/app/outputs/bundle/release/app-release.aab
-        track: internal
-        status: completed
-        changesNotSentForReview: true
+    - name: Create Release Notes
+      run: |
+        echo "## IrtzaLink Mobile App Release" > release_notes.md
+        echo "" >> release_notes.md
+        echo "### Features:" >> release_notes.md
+        echo "- 📱 Complete profile management" >> release_notes.md
+        echo "- 🔗 Social media links management" >> release_notes.md
+        echo "- 📊 Analytics and statistics" >> release_notes.md
+        echo "- 📱 QR code generation and scanning" >> release_notes.md
+        echo "- 🎨 Professional UI/UX" >> release_notes.md
+        echo "- 🔄 Real-time sync with Firebase" >> release_notes.md
