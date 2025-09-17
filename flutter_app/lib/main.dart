@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -10,12 +11,50 @@ import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/qr/qr_screen.dart';
+import 'screens/init_error_screen.dart';
 import 'utils/app_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const IrtzaLinkApp());
+  runZonedGuarded(() {
+    runApp(const AppBootstrap());
+  }, (error, stack) {
+    // In release, this prevents hard crash on startup
+    // Logs still helpful if attached to a logger
+    // ignore: avoid_print
+    print('Uncaught zone error: $error');
+  });
+}
+
+class AppBootstrap extends StatelessWidget {
+  const AppBootstrap({super.key});
+
+  Future<void> _init() async {
+    // If google-services.json exists and plugin is applied, this will auto-pick config
+    await Firebase.initializeApp();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _init(),
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: SplashScreen(),
+          );
+        }
+        if (snap.hasError) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: InitErrorScreen(error: snap.error!, stack: snap.stackTrace),
+          );
+        }
+        return const IrtzaLinkApp();
+      },
+    );
+  }
 }
 
 class IrtzaLinkApp extends StatelessWidget {

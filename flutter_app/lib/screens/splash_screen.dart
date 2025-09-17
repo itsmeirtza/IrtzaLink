@@ -23,16 +23,19 @@ class SplashScreen extends StatelessWidget {
             children: [
               // App Logo/Icon
               Container(
-                width: 100,
-                height: 100,
+                width: 140,
+                height: 140,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(28),
                 ),
-                child: const Icon(
-                  Icons.link,
-                  size: 50,
-                  color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/logos/irtzalink_logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (ctx, err, st) => const Center(
+                    child: Icon(Icons.link, size: 64, color: Colors.white),
+                  ),
                 ),
               ),
               const SizedBox(height: 32),
