@@ -122,8 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.signInWithEmailAndPassword(
-        email,
-        password,
+        _emailController.text,
+        _passwordController.text,
         context,
       );
       
