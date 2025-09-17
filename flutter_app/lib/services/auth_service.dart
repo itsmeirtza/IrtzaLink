@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:convert';
 
 class AuthService extends ChangeNotifier {
@@ -234,6 +235,40 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       print('Sign up error: $e');
       rethrow;
+    }
+  }
+
+  // Sign in with Google (web and mobile support)
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      if (kIsWeb) {
+        // Web: use popup flow
+        final provider = GoogleAuthProvider();
+        final credential = await _auth.signInWithPopup(provider);
+        return credential;
+      } else {
+        // Mobile: use google_sign_in for token, then Firebase credential
+        final GoogleSignInAccount? gUser = await GoogleSignIn().signIn();
+        if (gUser == null) {
+          throw Exception('Google sign-in aborted');
+        }
+        final GoogleSignInAuthentication gAuth = await gUser.authentication;
+        final oauthCred = GoogleAuthProvider.credential(
+          accessToken: gAuth.accessToken,
+          idToken: gAuth.idToken,
+        );
+        final credential = await _auth.signInWithCredential(oauthCred);
+        return credential;
+      }
+    } catch (e) {
+      print('Google sign-in error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
