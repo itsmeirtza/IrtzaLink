@@ -13,14 +13,14 @@ dependencies:
     sdk: flutter
 
   # Firebase dependencies
-  firebase_core: ^2.15.0
-  firebase_auth: ^4.9.0
-  cloud_firestore: ^4.8.5
-  firebase_storage: ^11.2.6
-  firebase_analytics: ^10.4.5
+  firebase_core: ^2.24.0
+  firebase_auth: ^4.15.0
+  cloud_firestore: ^4.13.0
+  firebase_storage: ^11.5.0
+  firebase_analytics: ^10.7.0
   
   # Google Sign In
-  google_sign_in: ^6.1.4
+  google_sign_in: ^6.1.6
   
   # UI and Navigation
   cupertino_icons: ^1.0.2
@@ -50,7 +50,7 @@ dependencies:
   intl: ^0.18.1
   
   # Icons
-  font_awesome_flutter: 10.2.1
+  font_awesome_flutter: 10.6.0
 
 dev_dependencies:
   flutter_test:

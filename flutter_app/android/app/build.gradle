@@ -54,9 +54,9 @@ android {
         release {
             // Use release keystore if provided, else fall back to debug for non-production builds
             signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
-            // Optimize release builds (safe defaults)
-            minifyEnabled true
-            shrinkResources true
+            // Disable minification to avoid Google Play Core class issues
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
