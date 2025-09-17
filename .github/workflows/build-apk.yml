@@ -36,16 +36,57 @@ jobs:
         ndk: ''
         cache: true
         
+    - name: Prepare google-services.json (if provided)
+      if: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 != '' }}
+      shell: bash
+      run: |
+        mkdir -p flutter_app/android/app
+        echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > flutter_app/android/app/google-services.json
+
+    - name: Prepare Android signing (if provided)
+      if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      shell: bash
+      run: |
+        mkdir -p flutter_app/android/app/keystore
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > flutter_app/android/app/keystore/release.keystore
+        cat > flutter_app/android/key.properties <<EOF
+        storeFile=keystore/release.keystore
+        storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+        keyPassword=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+        EOF
+
     - name: Get dependencies
       working-directory: flutter_app
       run: flutter pub get
       
-    - name: Build APK
+    - name: Build APK (release)
       working-directory: flutter_app
       run: flutter build apk --release
+
+    - name: Build AAB (release for Play)
+      working-directory: flutter_app
+      run: flutter build appbundle --release
       
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: IrtzaLink-APK
         path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: IrtzaLink-AAB
+        path: flutter_app/build/app/outputs/bundle/release/app-release.aab
+
+    - name: Upload to Google Play (Internal)
+      if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+      uses: r0adkll/upload-google-play@v1
+      with:
+        serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        packageName: com.irtzalink.app
+        releaseFiles: flutter_app/build/app/outputs/bundle/release/app-release.aab
+        track: internal
+        status: completed
+        changesNotSentForReview: true
