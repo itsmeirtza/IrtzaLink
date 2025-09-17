@@ -121,13 +121,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithEmailAndPassword(
+      final credential = await authService.signInWithEmailAndPassword(
         _emailController.text,
         _passwordController.text,
-        context,
       );
       
-      if (mounted) {
+      if (mounted && credential != null) {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
@@ -146,9 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithGoogle(context);
+      final credential = await authService.signInWithGoogle();
       
-      if (mounted) {
+      if (mounted && credential != null) {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
