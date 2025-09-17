@@ -1,3 +1,130 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
+import 'user_service_new.dart';
+
+class AuthService extends ChangeNotifier {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  
+  User? _user;
+  bool _isLoading = false;
+  
+  User? get user => _user;
+  bool get isAuthenticated => _user != null;
+  bool get isLoading => _isLoading;
+  
+  AuthService() {
+    // Listen for auth state changes
+    _auth.authStateChanges().listen((User? user) {
+      _user = user;
+      notifyListeners();
+    });
+  }
+  
+  // Sign in with Google
+  Future<bool> signInWithGoogle(BuildContext context) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      
+      await _auth.signInWithCredential(credential);
+      
+      // Initialize user data after successful login
+      if (context.mounted) {
+        final userService = context.read<UserService>();
+        await userService.initializeUser();
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+      
+    } catch (e) {
+      debugPrint('Google sign in error: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+  
+  // Sign in with email and password
+  Future<bool> signInWithEmailPassword(String email, String password, BuildContext context) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      
+      // Initialize user data after successful login
+      if (context.mounted) {
+        final userService = context.read<UserService>();
+        await userService.initializeUser();
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+      
+    } catch (e) {
+      debugPrint('Email sign in error: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+  
+  // Sign up with email and password
+  Future<bool> signUpWithEmailPassword(String email, String password, BuildContext context) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      
+      // Initialize user data for new user
+      if (context.mounted) {
+        final userService = context.read<UserService>();
+        await userService.initializeUser();
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+      
+    } catch (e) {
+      debugPrint('Email sign up error: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+  
+  // Sign out
+  Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('Sign out error: $e');
+    }
+  }
+}
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

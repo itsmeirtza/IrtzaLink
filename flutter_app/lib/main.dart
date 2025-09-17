@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
-import 'services/user_service.dart';
+import 'services/user_service_new.dart';
 import 'services/theme_service.dart';
+import 'services/analytics_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -67,6 +68,7 @@ class IrtzaLinkApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => UserService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(create: (_) => AnalyticsService()),
       ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {

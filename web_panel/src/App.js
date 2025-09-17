@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
-import { userDataManager } from './services/userDataManager';
-import { permanentStorage, loadUserDataPermanently } from './services/permanentStorage';
+import { userSync } from './services/userSync';
 // Import diagnostics for easier debugging
 import './utils/dataPersistenceDiagnostics';
 
@@ -78,50 +77,53 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Use permanent storage - NEVER loses data!
-          const result = await loadUserDataPermanently(firebaseUser.uid);
+          console.log('🔥 User signed in, initializing data sync...', firebaseUser.uid);
           
-          console.log('🔐 Loading user data with permanent storage:', result);
+          // Use new UserSync service - FIXES ALL DATA SYNC ISSUES!
+          const result = await userSync.initializeUserData(firebaseUser.uid);
           
-          // Use saved data to enhance Firebase user info
-          const savedData = result.success ? result.data : {};
-          
-          const enhancedUser = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: savedData.displayName || firebaseUser.displayName,
-            photoURL: savedData.photoURL || firebaseUser.photoURL,
-            emailVerified: firebaseUser.emailVerified,
-            userData: result.success ? result.data : null,
-            dataSource: result.source || 'permanent_storage' // Track data source for debugging
-          };
-          
-          console.log('🔐 Enhanced user with saved data:', {
-            displayName: enhancedUser.displayName,
-            hasUserData: !!enhancedUser.userData,
-            dataKeys: enhancedUser.userData ? Object.keys(enhancedUser.userData) : []
-          });
-          
-          setUser(enhancedUser);
-          
-          // Store user data in localStorage for persistence across sessions
-          localStorage.setItem('userData', JSON.stringify({
-            uid: enhancedUser.uid,
-            email: enhancedUser.email,
-            displayName: enhancedUser.displayName,
-            photoURL: enhancedUser.photoURL,
-            userData: enhancedUser.userData
-          }));
-          
-          // Show notification if using stale data
-          if (result.isStale) {
-            console.log('Using cached data while offline or during network issues');
+          if (result.success) {
+            const enhancedUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: result.data.displayName || firebaseUser.displayName,
+              photoURL: result.data.photoURL || firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              userData: result.data,
+              dataSource: result.source || 'firestore'
+            };
+            
+            console.log('✅ User data loaded successfully:', {
+              username: result.data.username,
+              hasUsername: !!result.data.username,
+              hasBio: !!result.data.bio,
+              socialLinksCount: Object.keys(result.data.socialLinks || {}).length,
+              contactInfoCount: Object.keys(result.data.contactInfo || {}).length
+            });
+            
+            setUser(enhancedUser);
+            
+          } else {
+            console.error('❌ Failed to initialize user data:', result.error);
+            
+            // Create basic user object as fallback
+            const basicUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              userData: null,
+              dataSource: 'error_fallback'
+            };
+            
+            setUser(basicUser);
           }
           
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          console.error('❌ Error in auth state change:', error);
           
-          // Permanent storage will handle fallbacks internally - just create basic user
+          // Fallback to basic user
           const basicUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -129,38 +131,18 @@ function App() {
             photoURL: firebaseUser.photoURL,
             emailVerified: firebaseUser.emailVerified,
             userData: null,
-            dataSource: 'error_fallback'
+            dataSource: 'auth_error'
           };
           
           setUser(basicUser);
-          
-          // Store fallback data too
-          localStorage.setItem('userData', JSON.stringify({
-            uid: basicUser.uid,
-            email: basicUser.email,
-            displayName: basicUser.displayName,
-            photoURL: basicUser.photoURL,
-            userData: basicUser.userData
-          }));
         }
       } else {
-        console.log('🚪 User signed out - PRESERVING ALL DATA in localStorage');
+        console.log('🚪 User signed out');
         setUser(null);
         
-        // CRITICAL FIX: NEVER clear localStorage data on logout!
-        // This was the root cause of data loss on sign-in cycles
-        // All user profile data, social links, username, bio should persist
-        
-        // Keep all IrtzaLink data in localStorage
-        const allKeys = Object.keys(localStorage);
-        const irtzaLinkKeys = allKeys.filter(key => key.startsWith('irtzalink_'));
-        
-        console.log(`🔒 Preserving ${irtzaLinkKeys.length} localStorage keys for instant data recovery:`);
-        irtzaLinkKeys.forEach(key => {
-          console.log(`🔒 Preserved: ${key}`);
-        });
-        
-        console.log('✅ ALL user data preserved - no data loss on re-login!');
+        // Clean up listeners but PRESERVE user data for quick re-login
+        // This prevents data loss when switching accounts or re-logging
+        console.log('✅ User data preserved for quick re-login');
       }
       setLoading(false);
     });
