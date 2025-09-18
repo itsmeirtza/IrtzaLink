@@ -133,8 +133,8 @@ class _LoginScreenState extends State<LoginScreen> {
         // Initialize user data after successful sign in
         await userService.initializeUser();
         
-        // Navigate to home screen
-        Navigator.pushReplacementNamed(context, '/home');
+        // Don't navigate manually, let AuthWrapper handle it
+        // The AuthWrapper will automatically show HomeScreen when isAuthenticated becomes true
       }
     } catch (e) {
       if (mounted) {
@@ -160,8 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
         // Initialize user data after successful sign in
         await userService.initializeUser();
         
-        // Navigate to home screen
-        Navigator.pushReplacementNamed(context, '/home');
+        // Don't navigate manually, let AuthWrapper handle it
+        // The AuthWrapper will automatically show HomeScreen when isAuthenticated becomes true
       }
     } catch (e) {
       if (mounted) {

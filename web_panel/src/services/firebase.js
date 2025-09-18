@@ -529,24 +529,32 @@ export const resetUsernameChangeForAllUsers = async () => {
 // Search users by username and display name
 export const searchUsersByUsername = async (searchTerm, limitCount = 10) => {
   try {
+    console.log(`🔍 ENHANCED SEARCH: Looking for users matching "${searchTerm}"`);
+    
     if (!searchTerm || searchTerm.trim().length < 2) {
       return { success: true, data: [] };
     }
 
     const searchTermLower = searchTerm.toLowerCase();
     
-    // Search for usernames that start with the search term
+    // 1. FIRST: Try to search in localStorage/IndexedDB for instant results
+    const cachedUsers = await searchCachedUsers(searchTermLower);
+    console.log(`📱 Found ${cachedUsers.length} cached users matching search`);
+    
+    // 2. SECOND: Search Firebase for fresh data
     const usernameQuery = query(
       collection(db, 'users'),
       where('username', '>=', searchTermLower),
       where('username', '<=', searchTermLower + '\uf8ff'),
+      where('isActive', '==', true),
       limit(limitCount)
     );
     
-    // Also search by displayName (we'll get more results and filter client-side)
+    // Enhanced displayName search
     const displayNameQuery = query(
       collection(db, 'users'),
-      limit(50) // Get more results to filter
+      where('isActive', '==', true),
+      limit(100) // Get more results to filter
     );
     
     const [usernameSnapshot, displayNameSnapshot] = await Promise.all([
@@ -556,61 +564,224 @@ export const searchUsersByUsername = async (searchTerm, limitCount = 10) => {
     
     const users = new Map(); // Use Map to avoid duplicates
     
-    // Add username matches
+    // Add username matches with enhanced data
     usernameSnapshot.forEach((doc) => {
       const userData = doc.data();
-      if (userData.isActive !== false) {
-        users.set(doc.id, {
+      if (userData.isActive !== false && userData.username) {
+        const userProfile = {
           uid: doc.id,
           username: userData.username,
-          displayName: userData.displayName,
+          displayName: userData.displayName || userData.username,
           photoURL: userData.photoURL,
-          bio: userData.bio,
-          profileURL: userData.profileURL,
+          bio: userData.bio || '',
+          profileURL: userData.profileURL || `https://irtzalink.vercel.app/${userData.username}`,
+          socialLinks: userData.socialLinks || {},
+          contactInfo: userData.contactInfo || {},
           isActive: userData.isActive !== false,
-          matchType: 'username'
-        });
+          createdAt: userData.createdAt,
+          followers: userData.followers || [],
+          following: userData.following || [],
+          matchType: 'username',
+          relevanceScore: 100 // Exact username match
+        };
+        
+        users.set(doc.id, userProfile);
+        
+        // Cache this user data for future searches
+        cacheUserProfile(doc.id, userProfile);
       }
     });
     
-    // Add displayName matches (filter client-side)
+    // Add displayName matches with better filtering
     displayNameSnapshot.forEach((doc) => {
       const userData = doc.data();
-      if (userData.isActive !== false && userData.displayName) {
+      if (userData.isActive !== false && userData.displayName && !users.has(doc.id)) {
         const displayNameLower = userData.displayName.toLowerCase();
-        if (displayNameLower.includes(searchTermLower) && !users.has(doc.id)) {
-          users.set(doc.id, {
+        if (displayNameLower.includes(searchTermLower) || 
+            userData.username?.toLowerCase().includes(searchTermLower)) {
+          
+          const userProfile = {
             uid: doc.id,
-            username: userData.username,
-            displayName: userData.displayName,
+            username: userData.username || '',
+            displayName: userData.displayName || userData.username || 'Unknown User',
             photoURL: userData.photoURL,
-            bio: userData.bio,
-            profileURL: userData.profileURL,
+            bio: userData.bio || '',
+            profileURL: userData.profileURL || `https://irtzalink.vercel.app/${userData.username}`,
+            socialLinks: userData.socialLinks || {},
+            contactInfo: userData.contactInfo || {},
             isActive: userData.isActive !== false,
-            matchType: 'displayName'
-          });
+            createdAt: userData.createdAt,
+            followers: userData.followers || [],
+            following: userData.following || [],
+            matchType: 'displayName',
+            relevanceScore: displayNameLower.startsWith(searchTermLower) ? 80 : 60
+          };
+          
+          users.set(doc.id, userProfile);
+          
+          // Cache this user data
+          cacheUserProfile(doc.id, userProfile);
         }
       }
     });
     
-    // Convert Map to Array and sort by relevance
+    // Combine cached and fresh results
+    cachedUsers.forEach(cachedUser => {
+      if (!users.has(cachedUser.uid)) {
+        users.set(cachedUser.uid, { ...cachedUser, source: 'cache' });
+      }
+    });
+    
+    // Convert Map to Array and sort by enhanced relevance
     const sortedUsers = Array.from(users.values())
       .sort((a, b) => {
-        // Prioritize exact matches, then username matches, then display name matches
+        // Enhanced sorting algorithm
         if (a.username === searchTermLower) return -1;
         if (b.username === searchTermLower) return 1;
         if (a.displayName?.toLowerCase() === searchTermLower) return -1;
         if (b.displayName?.toLowerCase() === searchTermLower) return 1;
-        if (a.matchType === 'username' && b.matchType === 'displayName') return -1;
-        if (a.matchType === 'displayName' && b.matchType === 'username') return 1;
+        
+        // Sort by relevance score
+        if (a.relevanceScore !== b.relevanceScore) {
+          return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+        }
+        
+        // Sort by follower count for popular users first
+        const aFollowers = (a.followers?.length || 0);
+        const bFollowers = (b.followers?.length || 0);
+        if (aFollowers !== bFollowers) {
+          return bFollowers - aFollowers;
+        }
+        
+        // Sort by creation date (newer first)
+        if (a.createdAt && b.createdAt) {
+          return b.createdAt.seconds - a.createdAt.seconds;
+        }
+        
         return 0;
       })
       .slice(0, limitCount);
     
+    console.log(`✅ SEARCH COMPLETE: Found ${sortedUsers.length} users for "${searchTerm}"`);
     return { success: true, data: sortedUsers };
+    
   } catch (error) {
-    console.error('Error searching users:', error);
-    return { success: false, error: error.message };
+    console.error('❌ SEARCH ERROR:', error);
+    
+    // Fallback to cached results if Firebase fails
+    try {
+      const cachedResults = await searchCachedUsers(searchTerm.toLowerCase());
+      console.log(`🔄 FALLBACK: Returning ${cachedResults.length} cached results`);
+      return { success: true, data: cachedResults.slice(0, limitCount), source: 'cache_fallback' };
+    } catch (cacheError) {
+      console.error('❌ Cache fallback also failed:', cacheError);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Helper function to search cached users
+const searchCachedUsers = async (searchTerm) => {
+  try {
+    const cachedUsers = [];
+    const searchKeys = [
+      'irtzalink_search_cache',
+      'irtzalink_user_cache',
+      'irtzalink_profiles_cache'
+    ];
+    
+    for (const key of searchKeys) {
+      try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (Array.isArray(data)) {
+            const matches = data.filter(user => 
+              user.username?.toLowerCase().includes(searchTerm) ||
+              user.displayName?.toLowerCase().includes(searchTerm)
+            );
+            cachedUsers.push(...matches);
+          } else if (data.users && Array.isArray(data.users)) {
+            const matches = data.users.filter(user => 
+              user.username?.toLowerCase().includes(searchTerm) ||
+              user.displayName?.toLowerCase().includes(searchTerm)
+            );
+            cachedUsers.push(...matches);
+          }
+        }
+      } catch (parseError) {
+        console.warn(`⚠️ Failed to parse cached data from ${key}`);
+      }
+    }
+    
+    // Remove duplicates based on uid
+    const uniqueUsers = [];
+    const seenUids = new Set();
+    
+    for (const user of cachedUsers) {
+      if (user.uid && !seenUids.has(user.uid)) {
+        seenUids.add(user.uid);
+        uniqueUsers.push(user);
+      }
+    }
+    
+    return uniqueUsers;
+  } catch (error) {
+    console.warn('⚠️ Error searching cached users:', error);
+    return [];
+  }
+};
+
+// Helper function to cache user profiles
+const cacheUserProfile = (uid, userProfile) => {
+  try {
+    const cacheKey = `irtzalink_user_${uid}_profile`;
+    const cacheData = {
+      ...userProfile,
+      cachedAt: Date.now(),
+      cacheVersion: '2.0'
+    };
+    
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    
+    // Also update the search cache
+    updateSearchCache(userProfile);
+    
+  } catch (error) {
+    console.warn('⚠️ Failed to cache user profile:', error);
+  }
+};
+
+// Helper function to update search cache
+const updateSearchCache = (userProfile) => {
+  try {
+    const searchCacheKey = 'irtzalink_search_cache';
+    let searchCache = [];
+    
+    try {
+      const existing = localStorage.getItem(searchCacheKey);
+      if (existing) {
+        searchCache = JSON.parse(existing);
+      }
+    } catch (e) {
+      searchCache = [];
+    }
+    
+    // Remove existing entry for this user
+    searchCache = searchCache.filter(user => user.uid !== userProfile.uid);
+    
+    // Add updated profile
+    searchCache.unshift(userProfile);
+    
+    // Keep only the most recent 200 profiles
+    if (searchCache.length > 200) {
+      searchCache = searchCache.slice(0, 200);
+    }
+    
+    localStorage.setItem(searchCacheKey, JSON.stringify(searchCache));
+    
+  } catch (error) {
+    console.warn('⚠️ Failed to update search cache:', error);
   }
 };
 

@@ -43,6 +43,8 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
+    print('Auth state changed: ${user != null ? 'User signed in' : 'User signed out'}');
+    
     _user = user;
     _isLoading = true;
     notifyListeners();
@@ -53,6 +55,8 @@ class AuthService extends ChangeNotifier {
       
       // Setup offline data persistence
       await _setupOfflineDataSync(user.uid);
+      
+      print('User authentication complete, ready to show home screen');
     } else {
       // User signed out, clear only memory data but preserve cache
       _userData = null;
