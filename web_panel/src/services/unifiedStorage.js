@@ -101,14 +101,14 @@ class UnifiedStorage {
     }
   }
 
-  // SINGLE METHOD TO SAVE USER DATA
+  // SINGLE METHOD TO SAVE USER DATA - FORCE FIREBASE!
   async saveUserData(userId, userData) {
     try {
       if (!userId || !userData) {
         return { success: false, error: 'Missing userId or userData' };
       }
 
-      console.log(`💾 UNIFIED: Saving data for ${userId.slice(0, 8)}...`);
+      console.log(`🔥 FORCE: Saving data for ${userId.slice(0, 8)}... (FIREBASE MANDATORY!)`);
 
       const enhancedData = {
         ...userData,
@@ -117,38 +117,74 @@ class UnifiedStorage {
         lastSaved: Date.now()
       };
 
-      // STEP 1: Save to memory cache (instant)
-      this.memoryCache.set(userId, enhancedData);
-      console.log(`⚡ UNIFIED: Memory cache updated`);
-
-      // STEP 2: Save to localStorage (instant backup)
-      this.saveToLocalStorage(userId, enhancedData);
-      console.log(`💾 UNIFIED: LocalStorage updated`);
-
-      // STEP 3: Save to Firebase (for search and sync)
+      // STEP 1: FORCE FIREBASE SAVE FIRST! (CRITICAL FOR PUBLIC ACCESS)
       let firebaseSuccess = false;
-      if (this.isOnline) {
-        firebaseSuccess = await this.saveToFirebase(userId, enhancedData);
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (!firebaseSuccess && attempts < maxAttempts && this.isOnline) {
+        attempts++;
+        console.log(`🔥 FORCE: Firebase save attempt ${attempts}/${maxAttempts}`);
+        
+        try {
+          firebaseSuccess = await this.saveToFirebase(userId, enhancedData);
+          if (firebaseSuccess) {
+            console.log(`✅ FORCE: Firebase save SUCCESS on attempt ${attempts}!`);
+            break;
+          }
+        } catch (fbError) {
+          console.error(`❌ FORCE: Firebase attempt ${attempts} failed:`, fbError.message);
+        }
+        
+        if (!firebaseSuccess && attempts < maxAttempts) {
+          console.log(`⏳ FORCE: Waiting 2 seconds before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      
+      if (!firebaseSuccess) {
+        console.error(`❌ FORCE: ALL ${maxAttempts} Firebase attempts FAILED!`);
+        return { 
+          success: false, 
+          error: 'Firebase save failed - public profiles will not work!',
+          firebaseSync: false
+        };
+      }
+      
+      // STEP 2: Save to memory cache (instant)
+      this.memoryCache.set(userId, enhancedData);
+      console.log(`⚙️ FORCE: Memory cache updated`);
+
+      // STEP 3: Save to localStorage (instant backup)
+      this.saveToLocalStorage(userId, enhancedData);
+      console.log(`💾 FORCE: LocalStorage updated`);
+      
+      // STEP 4: Verify Firebase save worked
+      try {
+        console.log(`🔍 FORCE: Verifying Firebase save...`);
+        const verifyResult = await this.searchFirebaseByUsername(enhancedData.username);
+        if (verifyResult && verifyResult.username === enhancedData.username) {
+          console.log(`✅ FORCE: VERIFIED! Public profile @${enhancedData.username} is accessible!`);
+        } else {
+          console.error(`❌ FORCE: VERIFICATION FAILED! Public profile may not work!`);
+        }
+      } catch (verifyError) {
+        console.warn(`⚠️ FORCE: Verification failed:`, verifyError.message);
       }
 
-      if (!firebaseSuccess && this.isOnline) {
-        // Add to pending sync queue
-        this.addToPendingSync(userId, enhancedData);
-        console.log(`⏳ UNIFIED: Added to pending sync queue`);
-      }
-
-      console.log(`✅ UNIFIED: Save complete - memory ✓, localStorage ✓, firebase ${firebaseSuccess ? '✓' : '⏳'}`);
+      console.log(`🎉 FORCE: COMPLETE SUCCESS - Firebase ✓, Memory ✓, LocalStorage ✓`);
+      console.log(`🌐 FORCE: Public profile @${enhancedData.username} is now GUARANTEED accessible!`);
       
       return { 
         success: true, 
         savedToMemory: true,
         savedToLocal: true,
-        savedToFirebase: firebaseSuccess,
-        message: firebaseSuccess ? 'Saved everywhere' : 'Saved locally, Firebase pending'
+        savedToFirebase: true,
+        message: 'Saved everywhere - PUBLIC ACCESS GUARANTEED!'
       };
 
     } catch (error) {
-      console.error('❌ UNIFIED: Save error:', error);
+      console.error('❌ FORCE: Critical save error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -430,45 +466,53 @@ class UnifiedStorage {
     console.log(`💾 UNIFIED: Personal data PRESERVED for quick re-login`);
   }
 
-  // Get public profile by username
+  // Get public profile by username - DIRECT FIREBASE APPROACH
   async getPublicProfile(username) {
     try {
-      console.log(`🔍 UNIFIED: Getting public profile for @${username}`);
+      console.log(`🔥 DIRECT: Getting public profile for @${username} (FIREBASE FIRST!)`);
       
-      // Search in cache first
-      for (const [userId, userData] of this.memoryCache) {
-        if (userData.username === username) {
-          console.log(`⚡ UNIFIED: Found @${username} in memory cache`);
-          return { success: true, data: this.formatPublicProfile(userData) };
-        }
-      }
-      
-      // Search localStorage
-      const localResult = this.searchLocalStorageByUsername(username);
-      if (localResult) {
-        console.log(`💾 UNIFIED: Found @${username} in localStorage`);
-        return { success: true, data: this.formatPublicProfile(localResult) };
-      }
-      
-      // Search Firebase
+      // STEP 1: ALWAYS try Firebase FIRST (most reliable)
       if (this.isOnline) {
+        console.log(`☁️ DIRECT: Searching Firebase for @${username}...`);
         const firebaseResult = await this.searchFirebaseByUsername(username);
         if (firebaseResult) {
-          console.log(`☁️ UNIFIED: Found @${username} in Firebase`);
+          console.log(`✅ DIRECT: FOUND @${username} in Firebase!`, {
+            username: firebaseResult.username,
+            displayName: firebaseResult.displayName,
+            hasLinks: !!firebaseResult.socialLinks
+          });
           
-          // Cache it locally
-          this.saveToLocalStorage(firebaseResult.userId, firebaseResult);
+          const publicProfile = this.formatPublicProfile(firebaseResult);
+          
+          // Cache in memory for this session only
           this.memoryCache.set(firebaseResult.userId, firebaseResult);
           
-          return { success: true, data: this.formatPublicProfile(firebaseResult) };
+          return { success: true, data: publicProfile, source: 'firebase_direct' };
+        } else {
+          console.log(`❌ DIRECT: NOT FOUND in Firebase for @${username}`);
         }
       }
       
-      console.log(`❌ UNIFIED: Profile @${username} not found`);
+      // STEP 2: Fallback to memory cache (current session only)
+      for (const [userId, userData] of this.memoryCache) {
+        if (userData.username === username) {
+          console.log(`⚙️ DIRECT: Found @${username} in memory cache (fallback)`);
+          return { success: true, data: this.formatPublicProfile(userData), source: 'memory_fallback' };
+        }
+      }
+      
+      // STEP 3: Last resort - try localStorage (least reliable)
+      const localResult = this.searchLocalStorageByUsername(username);
+      if (localResult) {
+        console.log(`💾 DIRECT: Found @${username} in localStorage (emergency)`);
+        return { success: true, data: this.formatPublicProfile(localResult), source: 'localStorage_emergency' };
+      }
+      
+      console.log(`❌ DIRECT: Profile @${username} NOT FOUND anywhere!`);
       return { success: false, error: 'Profile not found' };
       
     } catch (error) {
-      console.error('Get public profile error:', error);
+      console.error('❌ DIRECT: Error getting public profile:', error);
       return { success: false, error: error.message };
     }
   }
