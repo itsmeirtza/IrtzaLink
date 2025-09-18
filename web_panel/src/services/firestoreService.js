@@ -32,6 +32,8 @@ import {
   getDownloadURL, 
   deleteObject 
 } from 'firebase/storage';
+import supabaseService from './supabaseService';
+import supabaseClient from './supabaseClient';
 
 class FirestoreService {
   constructor() {
@@ -147,6 +149,23 @@ class FirestoreService {
 
       await updateDoc(userRef, updateData);
 
+      // Mirror data to Supabase (if configured)
+      try {
+        const supaPayload = {
+          displayName: updates.display_name,
+          username: updates.username,
+          bio: updates.bio,
+          photoURL: updates.profile_pic_url,
+          socialLinks: updates.social_links,
+          contactInfo: updates.contact_info,
+          theme: updates.theme,
+          profileURL: updates.profile_url
+        };
+        await supabaseService.saveUserData(userId, supaPayload);
+      } catch (e) {
+        console.warn('⚠️ SUPABASE mirror failed (non-blocking):', e?.message);
+      }
+
       // Update cache
       if (this.userDataCache.has(userId)) {
         const cached = this.userDataCache.get(userId);
@@ -168,23 +187,34 @@ class FirestoreService {
     try {
       console.log('📸 STORAGE: Uploading profile picture for', userId.slice(0, 8));
 
-      // Create storage reference at users/{uid}/profile.jpg
+      // Prefer Supabase storage if configured
+      const supaUrl = process.env.REACT_APP_SUPABASE_URL;
+      const supaKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const bucket = process.env.REACT_APP_SUPABASE_BUCKET || 'profiles';
+
+      if (supaUrl && supaKey && supaUrl !== 'https://your-project.supabase.co') {
+        // Use Supabase Storage
+        const ext = (file.name && file.name.split('.').pop()) || 'jpg';
+        const path = `users/${userId}/profile.${ext}`;
+        const { data, error } = await supabaseClient.storage.from(bucket).upload(path, file, { upsert: true, cacheControl: '3600' });
+        if (error) throw error;
+        const { data: publicUrl } = supabaseClient.storage.from(bucket).getPublicUrl(path);
+        const downloadURL = publicUrl.publicUrl;
+
+        await this.updateUserData(userId, { profile_pic_url: downloadURL });
+        // Mirror to Supabase row as well
+        try { await supabaseService.saveUserData(userId, { photoURL: downloadURL }); } catch {}
+
+        console.log('✅ SUPABASE STORAGE: Profile picture uploaded');
+        return { success: true, url: downloadURL };
+      }
+
+      // Fallback to Firebase Storage (if configured)
       const storageRef = ref(storage, `users/${userId}/profile.jpg`);
-      
-      // Upload file
       const snapshot = await uploadBytes(storageRef, file);
-      console.log('📸 STORAGE: File uploaded');
-
-      // Get download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
-      console.log('📸 STORAGE: Download URL obtained');
-
-      // Update user document with new profile_pic_url
-      await this.updateUserData(userId, {
-        profile_pic_url: downloadURL
-      });
-
-      console.log('✅ STORAGE: Profile picture updated successfully');
+      await this.updateUserData(userId, { profile_pic_url: downloadURL });
+      console.log('✅ FIREBASE STORAGE: Profile picture uploaded');
       return { success: true, url: downloadURL };
     } catch (error) {
       console.error('❌ STORAGE: Error uploading profile picture:', error);

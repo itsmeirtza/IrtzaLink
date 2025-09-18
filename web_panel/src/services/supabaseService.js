@@ -4,9 +4,11 @@
  * GUARANTEED data persistence - NO DATA LOSS!
  */
 
-// For now using REST API - no SDK dependency
-const SUPABASE_URL = 'https://your-project.supabase.co'; // Replace with your project URL
-const SUPABASE_ANON_KEY = 'your-anon-key'; // Replace with your anon key
+import supabaseClient from './supabaseClient';
+
+// Configuration from environment variables
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://your-project.supabase.co';
+const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key';
 
 class SupabaseService {
   constructor() {
@@ -23,7 +25,7 @@ class SupabaseService {
   // Check if Supabase is configured
   checkConfiguration() {
     if (this.baseUrl === 'https://your-project.supabase.co') {
-      console.log('📝 SUPABASE: Not configured yet. Using localStorage fallback.');
+      console.log('📝 SUPABASE: Not configured yet. Skipping Supabase operations.');
       return false;
     }
     this.isConfigured = true;
@@ -52,6 +54,15 @@ class SupabaseService {
         updated_at: new Date().toISOString()
       };
 
+      if (supabaseClient) {
+        const { error } = await supabaseClient
+          .from('users')
+          .upsert(payload, { onConflict: 'user_id' });
+        if (error) throw error;
+        console.log('✅ SUPABASE: Data saved successfully');
+        return { success: true, message: 'Data saved to Supabase' };
+      }
+      // Fallback REST
       const response = await fetch(`${this.baseUrl}/rest/v1/users`, {
         method: 'POST',
         headers: {
@@ -60,9 +71,8 @@ class SupabaseService {
         },
         body: JSON.stringify(payload)
       });
-
       if (response.ok) {
-        console.log('✅ SUPABASE: Data saved successfully');
+        console.log('✅ SUPABASE REST: Data saved successfully');
         return { success: true, message: 'Data saved to Supabase' };
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -83,11 +93,41 @@ class SupabaseService {
 
       console.log(`🔍 SUPABASE: Getting data for ${userId.slice(0, 8)}...`);
 
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('users')
+          .select('*')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          const userData = data;
+          console.log('✅ SUPABASE: Found user data');
+          return {
+            success: true,
+            data: {
+              uid: userId,
+              userId: userId,
+              displayName: userData.display_name,
+              username: userData.username,
+              bio: userData.bio,
+              photoURL: userData.photo_url,
+              socialLinks: userData.social_links,
+              contactInfo: userData.contact_info,
+              theme: userData.theme,
+              profileURL: userData.profile_url
+            }
+          };
+        } else {
+          console.log('❌ SUPABASE: User not found');
+          return { success: false, error: 'User not found' };
+        }
+      }
       const response = await fetch(
         `${this.baseUrl}/rest/v1/users?user_id=eq.${userId}&select=*`,
         { headers: this.headers }
       );
-
       if (response.ok) {
         const data = await response.json();
         
