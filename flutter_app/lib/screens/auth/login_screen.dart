@@ -121,12 +121,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final userService = Provider.of<UserService>(context, listen: false);
+      
       final credential = await authService.signInWithEmailAndPassword(
         _emailController.text,
         _passwordController.text,
       );
       
       if (mounted && credential != null) {
+        // Initialize user data after successful sign in
+        await userService.initializeUser();
+        
+        // Navigate to home screen
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
@@ -145,9 +151,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final userService = Provider.of<UserService>(context, listen: false);
+      
       final credential = await authService.signInWithGoogle();
       
       if (mounted && credential != null) {
+        // Initialize user data after successful sign in
+        await userService.initializeUser();
+        
+        // Navigate to home screen
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {

@@ -42,7 +42,7 @@ class UserService extends ChangeNotifier {
   
   bool get isLoading => _isLoading;
   
-  // Initialize user data
+  // Initialize user data - MAIN SYNC FIX
   Future<void> initializeUser() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -51,14 +51,21 @@ class UserService extends ChangeNotifier {
     notifyListeners();
     
     try {
+      debugPrint('🔥 Initializing user data from Firestore for: ${user.uid}');
+      
+      // Always try to get fresh data from Firestore first
       final doc = await _firestore.collection('users').doc(user.uid).get();
       
       if (doc.exists) {
         final data = doc.data()!;
-        _username = data['username'] ?? user.displayName?.replaceAll(' ', '').toLowerCase();
-        _displayName = data['displayName'] ?? user.displayName;
+        
+        debugPrint('✅ User data loaded from Firestore: username=${data['username']}, socialLinks=${(data['socialLinks'] as Map?)?.keys.length ?? 0}');
+        
+        // Load data from Firestore
+        _username = data['username'] ?? _generateUsername(user.displayName ?? user.email);
+        _displayName = data['displayName'] ?? user.displayName ?? 'User';
         _bio = data['bio'] ?? '';
-        _photoURL = data['photoURL'] ?? user.photoURL;
+        _photoURL = data['photoURL'] ?? user.photoURL ?? '';
         _socialLinks = Map<String, String>.from(data['socialLinks'] ?? {});
         _contactInfo = Map<String, String>.from(data['contactInfo'] ?? {});
         _qrCodeURL = data['qrCodeURL'] ?? '';
@@ -68,16 +75,50 @@ class UserService extends ChangeNotifier {
         _qrScans = data['qrScans'] ?? 0;
         _totalLinks = _socialLinks.values.where((link) => link.isNotEmpty).length;
         _linkClicks = data['linkClicks'] ?? 0;
+        
+        // Generate QR code if missing
+        if (_qrCodeURL?.isEmpty ?? true) {
+          await generateQRCode();
+        }
+        
       } else {
-        // Create new user document
-        _username = user.displayName?.replaceAll(' ', '').toLowerCase() ?? 'user${DateTime.now().millisecondsSinceEpoch}';
+        debugPrint('📝 Creating new user document in Firestore');
+        
+        // Create new user document with proper structure
+        _username = _generateUsername(user.displayName ?? user.email);
         _displayName = user.displayName ?? 'User';
-        _photoURL = user.photoURL;
+        _photoURL = user.photoURL ?? '';
+        _bio = '';
+        _socialLinks = {
+          'facebook': '',
+          'instagram': '',
+          'twitter': '',
+          'tiktok': '',
+          'youtube': '',
+          'linkedin': '',
+          'whatsapp': '',
+          'telegram': '',
+        };
+        _contactInfo = {
+          'phone': '',
+          'email': user.email ?? '',
+          'website': '',
+        };
         
         await _createUserDocument(user.uid);
+        await generateQRCode();
+        
+        debugPrint('✅ New user document created in Firestore');
       }
+      
+      // Setup real-time listener for data sync
+      _setupRealtimeListener(user.uid);
+      
+      debugPrint('✅ User data initialization completed successfully');
+      debugPrint('📈 Stats: ${_socialLinks.length} social links, ${_contactInfo.length} contact fields');
+      
     } catch (e) {
-      debugPrint('Error initializing user: $e');
+      debugPrint('❌ Error initializing user: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -195,7 +236,7 @@ class UserService extends ChangeNotifier {
     
     try {
       // This would typically call a Firebase Function to generate QR code
-      final qrURL = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://irtzalink.com/$_username';
+      final qrURL = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://irtzalink.site/$_username';
       
       _qrCodeURL = qrURL;
       
@@ -213,7 +254,175 @@ class UserService extends ChangeNotifier {
   
   // Get profile URL
   String getProfileURL() {
-    return 'https://irtzalink.com/$_username';
+    return 'https://irtzalink.site/$_username';
+  }
+  
+  // Generate username from display name or email
+  String _generateUsername(String? input) {
+    if (input == null || input.isEmpty) {
+      return 'user${DateTime.now().millisecondsSinceEpoch}';
+    }
+    
+    // If it's an email, use the part before @
+    if (input.contains('@')) {
+      input = input.split('@')[0];
+    }
+    
+    // Clean up the username
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '')
+        .substring(0, input.length < 15 ? input.length : 15)
+        .isNotEmpty ? input.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').substring(0, input.length < 15 ? input.length : 15) : 'user${DateTime.now().millisecondsSinceEpoch}';
+  }
+  
+  // Setup real-time listener for data sync
+  void _setupRealtimeListener(String userId) {
+    _firestore.collection('users').doc(userId).snapshots().listen(
+      (snapshot) {
+        if (snapshot.exists) {
+          final data = snapshot.data()!;
+          
+          debugPrint('🔄 Real-time sync: User data updated from Firestore');
+          
+          // Update local data
+          _username = data['username'] ?? _username;
+          _displayName = data['displayName'] ?? _displayName;
+          _bio = data['bio'] ?? _bio;
+          _photoURL = data['photoURL'] ?? _photoURL;
+          _socialLinks = Map<String, String>.from(data['socialLinks'] ?? _socialLinks);
+          _contactInfo = Map<String, String>.from(data['contactInfo'] ?? _contactInfo);
+          _qrCodeURL = data['qrCodeURL'] ?? _qrCodeURL;
+          
+          // Statistics
+          _profileViews = data['profileViews'] ?? _profileViews;
+          _qrScans = data['qrScans'] ?? _qrScans;
+          _totalLinks = _socialLinks.values.where((link) => link.isNotEmpty).length;
+          _linkClicks = data['linkClicks'] ?? _linkClicks;
+          
+          notifyListeners();
+        }
+      },
+      onError: (error) {
+        debugPrint('❌ Real-time sync error: $error');
+      },
+    );
+  }
+  
+  // Track profile view
+  Future<void> trackProfileView() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      _profileViews++;
+      
+      await _firestore.collection('users').doc(user.uid).update({
+        'profileViews': FieldValue.increment(1),
+        'lastViewedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // Log analytics
+      await _firestore.collection('analytics').add({
+        'userId': user.uid,
+        'type': 'profile_view',
+        'timestamp': FieldValue.serverTimestamp(),
+        'userAgent': 'Flutter Mobile App',
+      });
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error tracking profile view: $e');
+    }
+  }
+  
+  // Track QR code scan
+  Future<void> trackQRScan() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      _qrScans++;
+      
+      await _firestore.collection('users').doc(user.uid).update({
+        'qrScans': FieldValue.increment(1),
+      });
+      
+      // Log analytics
+      await _firestore.collection('analytics').add({
+        'userId': user.uid,
+        'type': 'qr_scan',
+        'timestamp': FieldValue.serverTimestamp(),
+        'userAgent': 'Flutter Mobile App',
+      });
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error tracking QR scan: $e');
+    }
+  }
+  
+  // Track link click
+  Future<void> trackLinkClick(String platform, String url) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      _linkClicks++;
+      
+      await _firestore.collection('users').doc(user.uid).update({
+        'linkClicks': FieldValue.increment(1),
+      });
+      
+      // Log analytics
+      await _firestore.collection('analytics').add({
+        'userId': user.uid,
+        'type': 'link_click',
+        'platform': platform,
+        'url': url,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userAgent': 'Flutter Mobile App',
+      });
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error tracking link click: $e');
+    }
+  }
+  
+  // Update username with availability check
+  Future<bool> updateUsername(String newUsername) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    
+    // Check if username is available
+    final querySnapshot = await _firestore
+        .collection('users')
+        .where('username', isEqualTo: newUsername)
+        .get();
+    
+    if (querySnapshot.docs.isNotEmpty) {
+      // Username already exists
+      return false;
+    }
+    
+    try {
+      _username = newUsername;
+      
+      await _firestore.collection('users').doc(user.uid).update({
+        'username': newUsername,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // Regenerate QR code with new username
+      await generateQRCode();
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error updating username: $e');
+      return false;
+    }
   }
   
   // Clear user data
@@ -222,8 +431,8 @@ class UserService extends ChangeNotifier {
     _displayName = null;
     _bio = null;
     _photoURL = null;
-    _socialLinks = {};
-    _contactInfo = {};
+    _socialLinks.clear();
+    _contactInfo.clear();
     _qrCodeURL = null;
     _profileViews = 0;
     _qrScans = 0;

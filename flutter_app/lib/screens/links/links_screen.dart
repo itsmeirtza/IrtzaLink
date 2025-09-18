@@ -71,7 +71,7 @@ class _LinksScreenState extends State<LinksScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'irtzalink.com/${userService.username}',
+                                    'irtzalink.site/${userService.username}',
                                     style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
