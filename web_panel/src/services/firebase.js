@@ -115,24 +115,20 @@ export const getUserData = async (userId) => {
       return { success: false, error: 'User ID is required' };
     }
     
-    console.log(`🔍 PROTECTED: Getting user data for ${userId.slice(0, 8)}...`);
+    console.log(`🔍 Getting user data for ${userId.slice(0, 8)}...`);
     
-    // Always get fresh data from Firebase for accuracy
+    // Get data from Firebase
     const docRef = doc(db, 'users', userId);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
       const userData = docSnap.data();
       
-      // IMPORTANT: Verify the data belongs to the requested user
-      if (userData.uid !== userId && userData.userId !== userId) {
-        console.warn('⚠️ WARNING: User data mismatch! Requested:', userId.slice(0, 8), 'Got:', userData.uid?.slice(0, 8) || userData.userId?.slice(0, 8));
-        // Fix the data by adding the correct userId
-        userData.uid = userId;
-        userData.userId = userId;
-      }
+      // Ensure data has correct user ID
+      userData.uid = userId;
+      userData.userId = userId;
       
-      console.log(`✅ SUCCESS: User data loaded and verified:`, {
+      console.log(`✅ SUCCESS: User data loaded:`, {
         userId: userId.slice(0, 8),
         username: userData.username,
         displayName: userData.displayName,
@@ -142,21 +138,19 @@ export const getUserData = async (userId) => {
       return { 
         success: true, 
         data: userData,
-        source: 'firebase',
-        requestedUserId: userId
+        source: 'firebase'
       };
     } else {
       console.log(`⚠️ No user document found for ${userId.slice(0, 8)}`);
       return { 
         success: false, 
-        error: 'User not found',
-        requestedUserId: userId
+        error: 'User not found'
       };
     }
     
   } catch (error) {
     console.error('❌ ERROR getting user data for', userId?.slice(0, 8), ':', error);
-    return { success: false, error: error.message, requestedUserId: userId };
+    return { success: false, error: error.message };
   }
 };
 

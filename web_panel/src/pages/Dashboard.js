@@ -35,11 +35,7 @@ const Dashboard = ({ user }) => {
 
   useEffect(() => {
     if (user && user.uid) {
-      console.log('🔄 Dashboard useEffect: User changed, fetching fresh data for:', user.uid);
-      // Always clear previous data when user changes
-      setUserData(null);
-      setAnalytics({ views: 0, qrScans: 0, totalVisits: 0 });
-      
+      console.log('🔄 Dashboard useEffect: Loading data for user:', user.uid.substring(0, 8));
       fetchUserData();
       fetchAnalytics();
     }

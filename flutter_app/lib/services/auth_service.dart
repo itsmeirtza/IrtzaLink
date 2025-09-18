@@ -43,9 +43,9 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
-    print('🔒 PROTECTED Auth state changed: ${user != null ? 'User signed in (${user!.uid.substring(0, 8)}...)' : 'User signed out'}');
+    print('🔒 Auth state changed: ${user != null ? 'User signed in (${user!.uid.substring(0, 8)}...)' : 'User signed out'}');
     
-    // If switching users, clear previous data
+    // If switching to a different user, clear previous data
     if (_user != null && user != null && _user!.uid != user.uid) {
       print('🔄 Different user detected, clearing previous data');
       _userData = null;
@@ -65,10 +65,9 @@ class AuthService extends ChangeNotifier {
       
       print('✅ User authentication complete for ${user.uid.substring(0, 8)}, ready to show home screen');
     } else {
-      // User signed out, clear all data
+      // User signed out, clear memory but keep cache
       _userData = null;
-      await _clearUserCache();
-      print('🔒 Auth state changed: user signed out, all data cleared');
+      print('🔐 Auth state changed: user signed out, memory cleared but cache preserved');
     }
 
     _isLoading = false;
@@ -255,6 +254,7 @@ class AuthService extends ChangeNotifier {
   // Sign in with Google (web and mobile support)
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      print('🔄 Starting Google sign-in...');
       _isLoading = true;
       notifyListeners();
 
@@ -262,25 +262,37 @@ class AuthService extends ChangeNotifier {
         // Web: use popup flow
         final provider = GoogleAuthProvider();
         final credential = await _auth.signInWithPopup(provider);
+        print('✅ Google sign-in successful (web)');
         return credential;
       } else {
         // Mobile: use google_sign_in for token, then Firebase credential
+        print('📱 Starting Google sign-in for mobile...');
+        
         final GoogleSignInAccount? gUser = await GoogleSignIn().signIn();
         if (gUser == null) {
-          throw Exception('Google sign-in aborted');
+          print('⚠️ Google sign-in cancelled by user');
+          return null; // Don't throw exception for user cancellation
         }
+        
+        print('🔑 Getting Google authentication credentials...');
         final GoogleSignInAuthentication gAuth = await gUser.authentication;
+        
         final oauthCred = GoogleAuthProvider.credential(
           accessToken: gAuth.accessToken,
           idToken: gAuth.idToken,
         );
+        
+        print('🔥 Signing in with Firebase...');
         final credential = await _auth.signInWithCredential(oauthCred);
+        print('✅ Google sign-in successful! User: ${credential.user?.uid.substring(0, 8)}...');
+        
         return credential;
       }
     } catch (e) {
-      print('Google sign-in error: $e');
+      print('❌ Google sign-in error: $e');
       rethrow;
     } finally {
+      print('🔄 Google sign-in process complete, setting loading to false');
       _isLoading = false;
       notifyListeners();
     }
@@ -294,13 +306,11 @@ class AuthService extends ChangeNotifier {
 
       await _auth.signOut();
       
-      // Clear user data completely to prevent data mixing
+      // Clear user data from memory but keep cache for re-login
       _userData = null;
       
-      // Clear user cache to prevent data leakage between accounts
-      await _clearUserCache();
-      
-      print('🔒 User signed out, all data cleared for security');
+      // DON'T clear cache - keep it for faster re-login of same user
+      print('🔐 User signed out, data cached for potential re-login');
       
     } catch (e) {
       print('Sign out error: $e');
