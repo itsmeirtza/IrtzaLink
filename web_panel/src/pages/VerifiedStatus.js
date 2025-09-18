@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckBadgeIcon, StarIcon, BoltIcon, ShieldCheckIcon, TrophyIcon, EyeIcon, UserGroupIcon, CrownIcon } from '@heroicons/react/24/solid';
+import { CheckBadgeIcon, StarIcon, BoltIcon, ShieldCheckIcon, TrophyIcon, EyeIcon, UserGroupIcon } from '@heroicons/react/24/solid';
 import { isVerifiedUser } from '../config/verifiedAccounts';
 
 const VerifiedStatus = ({ user }) => {
@@ -167,7 +167,7 @@ const VerifiedStatus = ({ user }) => {
                 <CheckBadgeIcon className="w-16 h-16 text-white" />
               </div>
               <div className="absolute -top-2 -right-2">
-                <CrownIcon className="w-8 h-8 text-yellow-500" />
+                <TrophyIcon className="w-8 h-8 text-yellow-500" />
               </div>
             </div>
           </div>

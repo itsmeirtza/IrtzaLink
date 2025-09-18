@@ -118,7 +118,7 @@ const Profile = ({ user }) => {
   const loadUserLinks = async () => {
     try {
       console.log('🔗 PROFILE: Loading user links');
-      const result = await firestoreService.getUserLinks(user.uid);
+      const result = await supabaseService.getUserLinks(user.uid);
       
       if (result.success) {
         setLinks(result.data);
@@ -161,7 +161,7 @@ const Profile = ({ user }) => {
       setUploadingImage(true);
       console.log('📸 PROFILE: Uploading profile picture');
       
-      const result = await firestoreService.uploadProfilePicture(user.uid, file);
+      const result = await supabaseService.uploadProfilePicture(user.uid, file);
       
       if (result.success) {
         // Update form data with new image URL
@@ -200,7 +200,7 @@ const Profile = ({ user }) => {
 
       console.log('💾 PROFILE: Saving user data to Firestore');
       
-      const result = await firestoreService.updateUserData(user.uid, {
+      const result = await supabaseService.updateUserData(user.uid, {
         display_name: formData.display_name.trim(),
         username: formData.username.toLowerCase().trim(),
         bio: formData.bio || '',
@@ -235,7 +235,7 @@ const Profile = ({ user }) => {
     try {
       console.log('➕ PROFILE: Adding new link');
       
-      const result = await firestoreService.addUserLink(user.uid, {
+      const result = await supabaseService.addUserLink(user.uid, {
         title: newLink.title.trim(),
         url: newLink.url.trim()
       });
@@ -260,7 +260,7 @@ const Profile = ({ user }) => {
     try {
       console.log('🗑️ PROFILE: Deleting link', linkId);
       
-      const result = await firestoreService.deleteUserLink(user.uid, linkId);
+      const result = await supabaseService.deleteUserLink(user.uid, linkId);
 
       if (result.success) {
         toast.success('Link deleted');
