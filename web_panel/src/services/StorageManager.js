@@ -319,14 +319,24 @@ class StorageManagerClass {
    * UTILITY OPERATIONS
    */
 
-  // Clear user session (for logout) - ONLY clears memory cache, ALL DATA PRESERVED!
-  clearUserData(userId) {
-    console.log(`🚪 STORAGE: User ${userId.slice(0, 8)} logging out - PRESERVING ALL DATA`);
+  // SAFE LOGOUT - ONLY clears memory cache, ALL DATA PRESERVED!
+  safeLogout(userId) {
+    console.log(`🚪 STORAGE SAFE LOGOUT: User ${userId.slice(0, 8)} logging out - PRESERVING ALL DATA`);
+    
     // Only clear memory cache to free up RAM, ALL USER DATA REMAINS SAFE
     this.clearCache();
+    
     console.log(`✅ STORAGE: Memory cache cleared - USER DATA 100% PRESERVED`);
     console.log(`💾 STORAGE: Profile, bio, links, settings ALL SAFE in Firebase`);
+    console.log(`💾 STORAGE: localStorage backups ALL SAFE`);
     console.log(`🔄 STORAGE: Next login will restore everything instantly!`);
+    console.log(`🚫 STORAGE: NO DATA DELETED - EVERYTHING PRESERVED!`);
+  }
+  
+  // Legacy function - redirects to safe logout
+  clearUserData(userId) {
+    console.log(`🚪 LEGACY LOGOUT: Redirecting to safe logout for ${userId.slice(0, 8)}`);
+    this.safeLogout(userId);
   }
 
   // Health check

@@ -59,10 +59,40 @@ Thank you!`);
         >
           <div className="flex items-center justify-center mb-6">
             <CheckBadgeIcon className="w-16 h-16 text-blue-500 mr-3" />
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white">
               Get Verified
             </h1>
           </div>
+          
+          {/* Blue Tick Preview */}
+          {user && user.userData && user.userData.username && (
+            <div className="mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md mx-auto border-2 border-blue-200 dark:border-blue-800">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 text-center">
+                  Preview: Your Verified Profile
+                </h3>
+                <div className="flex items-center justify-center space-x-2">
+                  <img
+                    src={user.userData.photoURL || user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.userData.displayName || user.displayName || 'User')}&background=3b82f6&color=ffffff`}
+                    alt="Profile Preview"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
+                  />
+                  <div className="text-center">
+                    <div className="flex items-center space-x-1">
+                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {user.userData.displayName || user.displayName || 'Your Name'}
+                      </span>
+                      <CheckBadgeIcon className="w-5 h-5 text-blue-500" title="Verified" />
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      @{user.userData.username}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Join the elite circle of verified users and boost your profile's credibility with our exclusive verified badge
           </p>
@@ -76,7 +106,7 @@ Thank you!`);
           className="card p-8 mb-12 text-center relative overflow-hidden"
         >
           {/* Special Offer Badge */}
-          <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+          <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
             Limited Time Offer!
           </div>
           

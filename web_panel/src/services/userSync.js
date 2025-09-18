@@ -290,13 +290,36 @@ class UserSyncService {
   }
 
   /**
-   * Clear all data (complete logout)
+   * SAFE LOGOUT - PRESERVE ALL DATA
+   */
+  safeLogout(userId) {
+    console.log(`🚪 SAFE LOGOUT: User ${userId.slice(0, 8)} logging out - PRESERVING ALL DATA`);
+    
+    // Only cleanup listeners, NEVER delete user data
+    this.cleanup(userId);
+    
+    // Keep cache intact for quick re-login
+    // this.userDataCache.delete(userId); // COMMENTED OUT - DON'T DELETE CACHE!
+    
+    // DO NOT clear localStorage - keep all user data safe
+    console.log('💾 ALL USER DATA PRESERVED:');
+    console.log('✅ Profile data: SAFE');
+    console.log('✅ Bio: SAFE');
+    console.log('✅ Social links: SAFE');
+    console.log('✅ Contact info: SAFE');
+    console.log('✅ Settings: SAFE');
+    console.log('🔄 Next login will restore everything instantly!');
+  }
+  
+  /**
+   * Clear all data (ADMIN ONLY - for complete data reset)
    */
   clearAllData(userId) {
+    console.warn('⚠️ ADMIN FUNCTION: Complete data wipe requested');
     this.cleanup(userId);
     this.userDataCache.delete(userId);
     
-    // Clear localStorage data (optional, for complete logout)
+    // Clear localStorage data (ADMIN ONLY)
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -306,7 +329,7 @@ class UserSyncService {
     }
     keys.forEach(key => localStorage.removeItem(key));
     
-    console.log('✅ Cleared all data for user:', userId);
+    console.log('✅ ADMIN: Cleared all data for user:', userId);
   }
 
   /**

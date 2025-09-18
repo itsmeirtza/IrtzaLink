@@ -138,12 +138,19 @@ function App() {
           setUser(basicUser);
         }
       } else {
-        console.log('🚪 User signed out');
+        console.log('🚪 User signed out - PRESERVING ALL DATA');
+        
+        // If there was a user, use safe logout to preserve data
+        if (user && user.uid) {
+          userSync.safeLogout(user.uid);
+        }
+        
         setUser(null);
         
         // Clean up listeners but PRESERVE user data for quick re-login
         // This prevents data loss when switching accounts or re-logging
         console.log('✅ User data preserved for quick re-login');
+        console.log('💾 Profile, bio, social links - ALL SAFE!');
       }
       setLoading(false);
     });
