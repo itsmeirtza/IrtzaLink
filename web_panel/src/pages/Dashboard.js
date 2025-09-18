@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserData, searchUsersByUsername, getUserAnalytics } from '../services/firebase';
+import { getUserAnalytics } from '../services/firebase';
+import { getUserData, searchUsers } from '../services/unifiedStorage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -131,13 +132,18 @@ const Dashboard = ({ user }) => {
 
     setSearchLoading(true);
     try {
-      const result = await searchUsersByUsername(query.trim());
+      console.log('🔍 UNIFIED: Searching from Dashboard...', query);
+      const result = await searchUsers(query.trim());
       if (result.success) {
+        console.log('✅ UNIFIED: Search results:', result.data.length);
         setSearchResults(result.data);
         setShowSearchResults(true);
+      } else {
+        console.error('❌ UNIFIED: Search failed:', result.error);
+        setSearchResults([]);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('❌ UNIFIED: Search error:', error);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);

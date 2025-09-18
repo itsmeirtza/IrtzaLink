@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getUserData, updateUserData, uploadProfileImage, generateQRCode, checkUsernameAvailabilityLocal, reserveUsernameLocal } from '../services/firebase';
+import { uploadProfileImage, reserveUsernameLocal, checkUsernameAvailabilityLocal } from '../services/firebase';
+import { getUserData, saveUserData } from '../services/unifiedStorage';
 import { loadUserDataPermanently, updateUserDataPermanently } from '../services/permanentStorage';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
@@ -266,8 +267,8 @@ const Profile = ({ user }) => {
       const result = await uploadProfileImage(user.uid, file);
       
       if (result.success) {
-        // Save immediately to database first
-        const updateResult = await updateUserData(user.uid, {
+        // Save immediately to unified storage
+        const updateResult = await saveUserData(user.uid, {
           photoURL: result.url,
           updatedAt: new Date()
         });
@@ -304,7 +305,7 @@ const Profile = ({ user }) => {
       const profileURL = `https://irtzalink.site/${formData.username}`;
       
       // Update user data with QR code URL (for local generation)
-      const updateResult = await updateUserData(user.uid, {
+      const updateResult = await saveUserData(user.uid, {
         qrCodeURL: profileURL,
         profileURL: profileURL,
         updatedAt: new Date()
@@ -384,23 +385,16 @@ const Profile = ({ user }) => {
         hasSocialLinks: Object.keys(updateData.socialLinks || {}).length > 0
       });
       
-      // Use enhanced Firebase function that saves to 5+ backup locations
-      const enhancedResult = await updateUserData(user.uid, updateData);
+      // Use UNIFIED storage - single source of truth!
+      console.log('🔍 UNIFIED: Saving profile data...');
+      const unifiedResult = await saveUserData(user.uid, updateData);
       
-      if (enhancedResult.success) {
-        console.log('🔒 SUCCESS: Profile data saved with enhanced persistence!');
-        console.log('🔒 Backup status:', {
-          localBackups: enhancedResult.localStorageBackups || 5,
-          firebaseSync: enhancedResult.firebaseSync || false
-        });
+      if (unifiedResult.success) {
+        console.log('✅ UNIFIED: Profile saved successfully!');
+        console.log('💾 UNIFIED: Saved to memory, localStorage, and Firebase');
+        console.log('🔍 UNIFIED: Search will now find this user!');
+        console.log('🔒 UNIFIED: Data NEVER gets lost!');
         
-        // ALSO use permanent storage as additional backup
-        try {
-          await updateUserDataPermanently(user.uid, updateData);
-          console.log('🔒 EXTRA BACKUP: Also saved with permanent storage system');
-        } catch (permError) {
-          console.warn('⚠️ Permanent storage backup failed (main save still successful):', permError.message);
-        }
         
         // Simple success message
         toast.success('Saved');
@@ -438,8 +432,8 @@ const Profile = ({ user }) => {
         });
         
       } else {
-        console.error('❌ Enhanced save failed:', enhancedResult.error);
-        toast.error(enhancedResult.error || 'Error updating profile - please try again');
+        console.error('❌ UNIFIED: Save failed:', unifiedResult.error);
+        toast.error(unifiedResult.error || 'Error updating profile - please try again');
       }
     } catch (error) {
       console.error('Error updating profile:', error);

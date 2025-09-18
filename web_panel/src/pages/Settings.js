@@ -1,5 +1,6 @@
 import React from 'react';
 import { logout } from '../services/firebase';
+import { clearUserData } from '../services/unifiedStorage';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -17,6 +18,10 @@ const Settings = ({ user, darkMode, toggleDarkMode }) => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
+        // Clear ONLY session data, KEEP profile data
+        clearUserData(user.uid);
+        console.log('🔒 UNIFIED: Profile data preserved for quick re-login');
+        
         await logout();
         toast.success('Logged out successfully!');
         navigate('/login');

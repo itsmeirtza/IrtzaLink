@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
-import { trackQRScan, getPublicProfile } from '../services/firebase';
+import { trackQRScan } from '../services/firebase';
+import { getPublicProfile } from '../services/unifiedStorage';
 
 const PublicProfile = () => {
   const { username } = useParams();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getUserData, trackProfileVisit } from '../services/firebase';
+import { trackProfileVisit } from '../services/firebase';
+import { getUserData } from '../services/unifiedStorage';
 import FollowButton from '../components/FollowButton';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
