@@ -335,12 +335,14 @@ export const updateUserData = async (userId, userData) => {
       throw new Error('User ID is required');
     }
     
+    console.log('🔥 FORCING FIREBASE SYNC - SEARCH WILL WORK!');
+    
     // Validate data before saving
     const cleanedData = {
       ...userData,
-      userId: userId, // Always include userId for consistency
+      userId: userId,
       updatedAt: new Date(),
-      lastSyncedAt: new Date() // Track when data was last synced
+      lastSyncedAt: new Date()
     };
     
     // Remove any undefined values
@@ -350,96 +352,117 @@ export const updateUserData = async (userId, userData) => {
       }
     });
     
-    console.log('💾 ENHANCED: Updating user data with permanent persistence:', {
-      userId: userId.slice(0, 8) + '...',
-      hasUsername: !!cleanedData.username,
-      hasDisplayName: !!cleanedData.displayName,
-      hasBio: !!cleanedData.bio,
-      hasSocialLinks: !!cleanedData.socialLinks && Object.keys(cleanedData.socialLinks).length > 0
+    console.log('🔥 FORCING Firebase save for search:', {
+      userId: userId.slice(0, 8),
+      username: cleanedData.username,
+      displayName: cleanedData.displayName
     });
     
-    // 1. FIRST PRIORITY: Save to localStorage with multiple backup keys
-    // This ensures data NEVER gets lost, even if Firebase fails
+    // 1. FORCE FIREBASE SAVE FIRST (for search to work)
+    let firebaseSuccess = false;
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (!firebaseSuccess && attempts < maxAttempts) {
+      attempts++;
+      try {
+        console.log(`🔥 Firebase save attempt ${attempts}/${maxAttempts}`);
+        
+        // Try update first
+        try {
+          const docRef = doc(db, 'users', userId);
+          await updateDoc(docRef, cleanedData);
+          firebaseSuccess = true;
+          console.log('✅ FIREBASE SUCCESS: Data updated!');
+        } catch (updateError) {
+          // If update fails, try setDoc
+          console.log('📝 Update failed, trying setDoc...');
+          const docRef = doc(db, 'users', userId);
+          await setDoc(docRef, cleanedData, { merge: true });
+          firebaseSuccess = true;
+          console.log('✅ FIREBASE SUCCESS: Document created!');
+        }
+        
+      } catch (firebaseError) {
+        console.error(`❌ Firebase attempt ${attempts} failed:`, firebaseError.message);
+        if (attempts === maxAttempts) {
+          console.error('❌ ALL FIREBASE ATTEMPTS FAILED!');
+        } else {
+          // Wait 1 second before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+    
+    // 2. Verify Firebase save worked (CRITICAL for search)
+    if (firebaseSuccess) {
+      try {
+        console.log('🔍 Verifying Firebase data for search...');
+        const docRef = doc(db, 'users', userId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const savedData = docSnap.data();
+          console.log('✅ FIREBASE VERIFIED - Search will find:', {
+            username: savedData.username,
+            displayName: savedData.displayName,
+            socialLinks: !!savedData.socialLinks
+          });
+        }
+      } catch (verifyError) {
+        console.warn('⚠️ Firebase verification failed:', verifyError.message);
+      }
+    }
+    
+    // 3. Save to localStorage as backup
     try {
-      // Create enhanced persistent data structure
       const enhancedData = {
         ...cleanedData,
         persistenceVersion: '3.0',
         savedTimestamp: Date.now(),
-        savedDate: new Date().toISOString(),
-        backupCount: 5 // Number of backup locations
+        savedDate: new Date().toISOString()
       };
       
-      // Save to 5 different localStorage keys for maximum redundancy
       const storageKeys = [
-        `irtzalink_${userId}_profile_v3`,      // Primary key
-        `irtzalink_user_${userId}_backup`,     // Backup 1
-        `irtzalink_data_${userId}_safe`,       // Backup 2
-        `user_profile_${userId}_permanent`,    // Backup 3
-        `irtzalink_permanent_${userId}_v3`     // Backup 4
+        `irtzalink_${userId}_profile_v3`,
+        `irtzalink_user_${userId}_backup`,
+        `irtzalink_data_${userId}_safe`,
+        `user_profile_${userId}_permanent`,
+        `irtzalink_permanent_${userId}_v3`
       ];
       
-      // Save to all backup locations
       storageKeys.forEach((key, index) => {
         try {
           localStorage.setItem(key, JSON.stringify(enhancedData));
-          console.log(`✅ Backup ${index + 1}/5: Saved to ${key}`);
+          console.log(`💾 Backup ${index + 1}/5: Saved to ${key}`);
         } catch (err) {
           console.warn(`⚠️ Backup ${index + 1} failed:`, err.message);
         }
       });
       
-      console.log('🔒 CRITICAL SUCCESS: User data saved to 5 localStorage backup locations!');
-      console.log('🔒 Data will NEVER be lost, even if Firebase is down!');
+      console.log('💾 LocalStorage backups complete');
       
     } catch (localError) {
-      console.error('❌ CRITICAL ERROR: Failed to save to localStorage:', localError);
-      // This is critical - localStorage should always work
+      console.error('❌ LocalStorage save failed:', localError);
     }
     
-    // 2. SECOND PRIORITY: Try to save to Firebase (best effort, not critical)
-    let firebaseSuccess = false;
-    try {
-      const docRef = doc(db, 'users', userId);
-      await updateDoc(docRef, cleanedData);
-      firebaseSuccess = true;
-      console.log('☁️ SUCCESS: Data also saved to Firebase cloud');
-    } catch (firebaseError) {
-      console.warn('⚠️ Firebase save failed (data still safe in localStorage):', firebaseError.message);
-      
-      // Try to create the document if it doesn't exist
-      try {
-        const docRef = doc(db, 'users', userId);
-        await setDoc(docRef, cleanedData, { merge: true });
-        firebaseSuccess = true;
-        console.log('☁️ SUCCESS: Created new Firebase document and saved data');
-      } catch (createError) {
-        console.warn('⚠️ Firebase create also failed (localStorage data is still safe):', createError.message);
-      }
+    if (!firebaseSuccess) {
+      console.error('❌ CRITICAL: Firebase save failed - search will not work!');
+      return { 
+        success: false, 
+        error: 'Firebase save failed - search will not work',
+        firebaseSync: false
+      };
     }
     
-    // 3. Verify data persistence by reading it back
-    try {
-      const verifyKey = `irtzalink_${userId}_profile_v3`;
-      const savedData = localStorage.getItem(verifyKey);
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        console.log('🔍 VERIFICATION: Data successfully persisted:', {
-          username: parsed.username,
-          displayName: parsed.displayName,
-          dataSize: JSON.stringify(parsed).length + ' bytes'
-        });
-      }
-    } catch (verifyError) {
-      console.warn('⚠️ Data verification failed:', verifyError.message);
-    }
+    console.log('🎉 SUCCESS: Data saved to Firebase AND localStorage!');
+    console.log('🔍 Search will now work properly!');
     
-    console.log('✅ COMPLETE: User data update finished successfully');
     return { 
       success: true, 
       firebaseSync: firebaseSuccess,
       localStorageBackups: 5,
-      message: firebaseSuccess ? 'Data saved to both localStorage and Firebase' : 'Data saved to localStorage (Firebase sync failed but data is safe)'
+      message: 'Data saved successfully - search will work'
     };
     
   } catch (error) {
