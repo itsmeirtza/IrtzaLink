@@ -43,7 +43,14 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
-    print('Auth state changed: ${user != null ? 'User signed in' : 'User signed out'}');
+    print('🔒 PROTECTED Auth state changed: ${user != null ? 'User signed in (${user!.uid.substring(0, 8)}...)' : 'User signed out'}');
+    
+    // If switching users, clear previous data
+    if (_user != null && user != null && _user!.uid != user.uid) {
+      print('🔄 Different user detected, clearing previous data');
+      _userData = null;
+      await _clearUserCache();
+    }
     
     _user = user;
     _isLoading = true;
@@ -56,12 +63,12 @@ class AuthService extends ChangeNotifier {
       // Setup offline data persistence
       await _setupOfflineDataSync(user.uid);
       
-      print('User authentication complete, ready to show home screen');
+      print('✅ User authentication complete for ${user.uid.substring(0, 8)}, ready to show home screen');
     } else {
-      // User signed out, clear only memory data but preserve cache
+      // User signed out, clear all data
       _userData = null;
-      // DON'T clear user cache - keep it for faster re-login!
-      print('Auth state changed: user signed out, cache preserved');
+      await _clearUserCache();
+      print('🔒 Auth state changed: user signed out, all data cleared');
     }
 
     _isLoading = false;
@@ -287,12 +294,13 @@ class AuthService extends ChangeNotifier {
 
       await _auth.signOut();
       
-      // Clear user data from memory but KEEP cache for potential re-login
-      // This prevents data loss when user signs back in
+      // Clear user data completely to prevent data mixing
       _userData = null;
       
-      // DON'T call _clearUserCache() here - we want to preserve data!
-      print('User signed out, but profile data remains cached for re-login');
+      // Clear user cache to prevent data leakage between accounts
+      await _clearUserCache();
+      
+      print('🔒 User signed out, all data cleared for security');
       
     } catch (e) {
       print('Sign out error: $e');

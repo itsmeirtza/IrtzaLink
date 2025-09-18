@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
 import '../models/social_link.dart';
-import 'dart:io' show Platform;
 class UserService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -43,24 +44,55 @@ class UserService extends ChangeNotifier {
   
   bool get isLoading => _isLoading;
   
-  // Initialize user data - MAIN SYNC FIX
+  // Clear current user data to prevent mixing between users
+  void _clearCurrentUserData() {
+    debugPrint('🧹 Clearing previous user data to prevent mixing');
+    _username = null;
+    _displayName = null;
+    _bio = null;
+    _photoURL = null;
+    _socialLinks = {};
+    _contactInfo = {};
+    _qrCodeURL = null;
+    _profileViews = 0;
+    _qrScans = 0;
+    _totalLinks = 0;
+    _linkClicks = 0;
+  }
+  
+  // Initialize user data - PROTECTED SYNC
   Future<void> initializeUser() async {
     final user = _auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      debugPrint('❌ No user logged in, cannot initialize');
+      return;
+    }
     
     _isLoading = true;
     notifyListeners();
     
     try {
-      debugPrint('🔥 Initializing user data from Firestore for: ${user.uid}');
+      debugPrint('🔒 PROTECTED: Initializing user data for: ${user.uid.substring(0, 8)}...');
       
-      // Always try to get fresh data from Firestore first
+      // Clear any previous user data to prevent mixing
+      _clearCurrentUserData();
+      
+      // Always get fresh data from Firestore for accuracy
       final doc = await _firestore.collection('users').doc(user.uid).get();
       
       if (doc.exists) {
         final data = doc.data()!;
         
-        debugPrint('✅ User data loaded from Firestore: username=${data['username']}, socialLinks=${(data['socialLinks'] as Map?)?.keys.length ?? 0}');
+        // IMPORTANT: Verify data belongs to current user
+        final dataUserId = data['uid'] ?? data['userId'];
+        if (dataUserId != null && dataUserId != user.uid) {
+          debugPrint('⚠️ WARNING: User data mismatch! Expected: ${user.uid.substring(0, 8)}, Got: ${dataUserId.toString().substring(0, 8)}');
+          // Fix the data by ensuring correct user ID
+          data['uid'] = user.uid;
+          data['userId'] = user.uid;
+        }
+        
+        debugPrint('✅ VERIFIED: User data loaded from Firestore: username=${data['username']}, socialLinks=${(data['socialLinks'] as Map?)?.keys.length ?? 0}');
         
         // Load data from Firestore
         _username = data['username'] ?? _generateUsername(user.displayName ?? user.email);

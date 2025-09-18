@@ -35,6 +35,11 @@ const Dashboard = ({ user }) => {
 
   useEffect(() => {
     if (user && user.uid) {
+      console.log('🔄 Dashboard useEffect: User changed, fetching fresh data for:', user.uid);
+      // Always clear previous data when user changes
+      setUserData(null);
+      setAnalytics({ views: 0, qrScans: 0, totalVisits: 0 });
+      
       fetchUserData();
       fetchAnalytics();
     }
@@ -42,12 +47,16 @@ const Dashboard = ({ user }) => {
 
   const fetchUserData = async () => {
     try {
+      console.log('🔄 Dashboard: Fetching data for current user:', user.uid);
       const result = await getUserData(user.uid);
       if (result.success) {
+        console.log('✅ Dashboard: User data loaded successfully');
         setUserData(result.data);
+      } else {
+        console.error('❌ Dashboard: Failed to load user data:', result.error);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('❌ Dashboard: Error fetching user data:', error);
     }
   };
 

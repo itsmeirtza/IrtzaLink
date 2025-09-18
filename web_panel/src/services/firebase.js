@@ -110,86 +110,59 @@ export const reserveUsernameLocal = async (userId, username, userEmail = null) =
 
 export const getUserData = async (userId) => {
   try {
-    console.log(`🔍 ENHANCED: Getting user data for ${userId.slice(0, 8)}... (with backup recovery)`);
-    
-    // 1. FIRST: Try to load from localStorage backup locations
-    // This ensures instant data loading even if Firebase is down
-    const backupKeys = [
-      `irtzalink_${userId}_profile_v3`,      // Primary v3 key
-      `irtzalink_user_${userId}_backup`,     // Backup 1
-      `irtzalink_data_${userId}_safe`,       // Backup 2
-      `user_profile_${userId}_permanent`,    // Backup 3
-      `irtzalink_permanent_${userId}_v3`,    // Backup 4
-      `irtzalink_${userId}_profile`,         // Legacy key
-      `irtzalink_user_${userId}`,            // Legacy key 2
-      `irtzalink_persistent_${userId}`       // Legacy key 3
-    ];
-    
-    for (const key of backupKeys) {
-      try {
-        const localData = localStorage.getItem(key);
-        if (localData) {
-          const parsed = JSON.parse(localData);
-          // Check if this is the enhanced data structure or legacy
-          const userData = parsed.data || parsed; // Handle both new and legacy formats
-          
-          console.log(`📱 SUCCESS: Loaded user data from localStorage (${key}):`, {
-            username: userData.username,
-            displayName: userData.displayName,
-            hasData: Object.keys(userData).length > 5
-          });
-          
-          return { 
-            success: true, 
-            data: userData,
-            source: 'localStorage_backup',
-            backupKey: key
-          };
-        }
-      } catch (parseError) {
-        console.warn(`⚠️ Failed to parse data from ${key}:`, parseError.message);
-      }
+    if (!userId) {
+      console.error('❌ ERROR: No userId provided to getUserData');
+      return { success: false, error: 'User ID is required' };
     }
     
-    // 2. SECOND: Try Firebase if localStorage doesn't have data
-    console.log('🔄 No localStorage data found, trying Firebase...');
-    try {
-      const docRef = doc(db, 'users', userId);
-      const docSnap = await getDoc(docRef);
+    console.log(`🔍 PROTECTED: Getting user data for ${userId.slice(0, 8)}...`);
+    
+    // Always get fresh data from Firebase for accuracy
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const userData = docSnap.data();
       
-      if (docSnap.exists()) {
-        const firebaseData = docSnap.data();
-        console.log(`☁️ SUCCESS: Loaded user data from Firebase for ${userId.slice(0, 8)}...`);
-        
-        // IMMEDIATELY save to localStorage backups for future fast access
-        try {
-          const enhancedData = {
-            ...firebaseData,
-            persistenceVersion: '3.0',
-            savedTimestamp: Date.now(),
-            savedDate: new Date().toISOString(),
-            source: 'firebase_sync'
-          };
-          
-          // Save to primary backup location
-          localStorage.setItem(`irtzalink_${userId}_profile_v3`, JSON.stringify(enhancedData));
-          console.log('💾 Backed up Firebase data to localStorage for faster future access');
-        } catch (backupError) {
-          console.warn('⚠️ Failed to backup Firebase data to localStorage:', backupError.message);
-        }
-        
-        return { 
-          success: true, 
-          data: firebaseData,
-          source: 'firebase'
-        };
+      // IMPORTANT: Verify the data belongs to the requested user
+      if (userData.uid !== userId && userData.userId !== userId) {
+        console.warn('⚠️ WARNING: User data mismatch! Requested:', userId.slice(0, 8), 'Got:', userData.uid?.slice(0, 8) || userData.userId?.slice(0, 8));
+        // Fix the data by adding the correct userId
+        userData.uid = userId;
+        userData.userId = userId;
       }
-    } catch (firebaseError) {
-      console.warn('⚠️ Firebase access failed:', firebaseError.message);
+      
+      console.log(`✅ SUCCESS: User data loaded and verified:`, {
+        userId: userId.slice(0, 8),
+        username: userData.username,
+        displayName: userData.displayName,
+        hasData: Object.keys(userData).length > 3
+      });
+      
+      return { 
+        success: true, 
+        data: userData,
+        source: 'firebase',
+        requestedUserId: userId
+      };
+    } else {
+      console.log(`⚠️ No user document found for ${userId.slice(0, 8)}`);
+      return { 
+        success: false, 
+        error: 'User not found',
+        requestedUserId: userId
+      };
     }
     
-    // 3. FALLBACK: Create basic user structure if nothing exists
-    console.log(`🆕 No data found anywhere, creating basic structure for ${userId.slice(0, 8)}...`);
+  } catch (error) {
+    console.error('❌ ERROR getting user data for', userId?.slice(0, 8), ':', error);
+    return { success: false, error: error.message, requestedUserId: userId };
+  }
+};
+
+// Create basic user document if needed
+export const createUserDocument = async (userId, initialData = {}) => {
+  try {
     const basicUserData = {
       uid: userId,
       userId: userId,
@@ -529,7 +502,7 @@ export const resetUsernameChangeForAllUsers = async () => {
 // Search users by username and display name
 export const searchUsersByUsername = async (searchTerm, limitCount = 10) => {
   try {
-    console.log(`🔍 ENHANCED SEARCH: Looking for users matching "${searchTerm}"`);
+    console.log(`🔍 SIMPLE SEARCH: Looking for users matching "${searchTerm}"`);
     
     if (!searchTerm || searchTerm.trim().length < 2) {
       return { success: true, data: [] };
@@ -537,253 +510,83 @@ export const searchUsersByUsername = async (searchTerm, limitCount = 10) => {
 
     const searchTermLower = searchTerm.toLowerCase();
     
-    // 1. FIRST: Try to search in localStorage/IndexedDB for instant results
-    const cachedUsers = await searchCachedUsers(searchTermLower);
-    console.log(`📱 Found ${cachedUsers.length} cached users matching search`);
-    
-    // 2. SECOND: Search Firebase for fresh data
-    const usernameQuery = query(
+    // Simple and reliable Firebase search
+    const q = query(
       collection(db, 'users'),
       where('username', '>=', searchTermLower),
       where('username', '<=', searchTermLower + '\uf8ff'),
-      where('isActive', '==', true),
       limit(limitCount)
     );
     
-    // Enhanced displayName search
-    const displayNameQuery = query(
-      collection(db, 'users'),
-      where('isActive', '==', true),
-      limit(100) // Get more results to filter
-    );
+    const querySnapshot = await getDocs(q);
+    const users = [];
     
-    const [usernameSnapshot, displayNameSnapshot] = await Promise.all([
-      getDocs(usernameQuery),
-      getDocs(displayNameQuery)
-    ]);
-    
-    const users = new Map(); // Use Map to avoid duplicates
-    
-    // Add username matches with enhanced data
-    usernameSnapshot.forEach((doc) => {
+    querySnapshot.forEach((doc) => {
       const userData = doc.data();
-      if (userData.isActive !== false && userData.username) {
-        const userProfile = {
+      if (userData.isActive !== false) {
+        users.push({
           uid: doc.id,
           username: userData.username,
           displayName: userData.displayName || userData.username,
           photoURL: userData.photoURL,
-          bio: userData.bio || '',
-          profileURL: userData.profileURL || `https://irtzalink.vercel.app/${userData.username}`,
-          socialLinks: userData.socialLinks || {},
-          contactInfo: userData.contactInfo || {},
+          bio: userData.bio,
+          profileURL: userData.profileURL,
           isActive: userData.isActive !== false,
-          createdAt: userData.createdAt,
-          followers: userData.followers || [],
-          following: userData.following || [],
-          matchType: 'username',
-          relevanceScore: 100 // Exact username match
-        };
-        
-        users.set(doc.id, userProfile);
-        
-        // Cache this user data for future searches
-        cacheUserProfile(doc.id, userProfile);
+          matchType: 'username'
+        });
       }
     });
     
-    // Add displayName matches with better filtering
-    displayNameSnapshot.forEach((doc) => {
-      const userData = doc.data();
-      if (userData.isActive !== false && userData.displayName && !users.has(doc.id)) {
-        const displayNameLower = userData.displayName.toLowerCase();
-        if (displayNameLower.includes(searchTermLower) || 
-            userData.username?.toLowerCase().includes(searchTermLower)) {
+    // Also search by displayName
+    if (users.length < limitCount) {
+      const displayNameQuery = query(
+        collection(db, 'users'),
+        limit(50)
+      );
+      
+      const displayNameSnapshot = await getDocs(displayNameQuery);
+      
+      displayNameSnapshot.forEach((doc) => {
+        const userData = doc.data();
+        if (userData.isActive !== false && 
+            userData.displayName && 
+            userData.displayName.toLowerCase().includes(searchTermLower) &&
+            !users.find(u => u.uid === doc.id)) {
           
-          const userProfile = {
+          users.push({
             uid: doc.id,
-            username: userData.username || '',
-            displayName: userData.displayName || userData.username || 'Unknown User',
+            username: userData.username,
+            displayName: userData.displayName,
             photoURL: userData.photoURL,
-            bio: userData.bio || '',
-            profileURL: userData.profileURL || `https://irtzalink.vercel.app/${userData.username}`,
-            socialLinks: userData.socialLinks || {},
-            contactInfo: userData.contactInfo || {},
+            bio: userData.bio,
+            profileURL: userData.profileURL,
             isActive: userData.isActive !== false,
-            createdAt: userData.createdAt,
-            followers: userData.followers || [],
-            following: userData.following || [],
-            matchType: 'displayName',
-            relevanceScore: displayNameLower.startsWith(searchTermLower) ? 80 : 60
-          };
-          
-          users.set(doc.id, userProfile);
-          
-          // Cache this user data
-          cacheUserProfile(doc.id, userProfile);
+            matchType: 'displayName'
+          });
         }
-      }
-    });
+      });
+    }
     
-    // Combine cached and fresh results
-    cachedUsers.forEach(cachedUser => {
-      if (!users.has(cachedUser.uid)) {
-        users.set(cachedUser.uid, { ...cachedUser, source: 'cache' });
-      }
-    });
-    
-    // Convert Map to Array and sort by enhanced relevance
-    const sortedUsers = Array.from(users.values())
+    // Sort by relevance
+    const sortedUsers = users
       .sort((a, b) => {
-        // Enhanced sorting algorithm
         if (a.username === searchTermLower) return -1;
         if (b.username === searchTermLower) return 1;
-        if (a.displayName?.toLowerCase() === searchTermLower) return -1;
-        if (b.displayName?.toLowerCase() === searchTermLower) return 1;
-        
-        // Sort by relevance score
-        if (a.relevanceScore !== b.relevanceScore) {
-          return (b.relevanceScore || 0) - (a.relevanceScore || 0);
-        }
-        
-        // Sort by follower count for popular users first
-        const aFollowers = (a.followers?.length || 0);
-        const bFollowers = (b.followers?.length || 0);
-        if (aFollowers !== bFollowers) {
-          return bFollowers - aFollowers;
-        }
-        
-        // Sort by creation date (newer first)
-        if (a.createdAt && b.createdAt) {
-          return b.createdAt.seconds - a.createdAt.seconds;
-        }
-        
+        if (a.matchType === 'username' && b.matchType === 'displayName') return -1;
+        if (a.matchType === 'displayName' && b.matchType === 'username') return 1;
         return 0;
       })
       .slice(0, limitCount);
     
-    console.log(`✅ SEARCH COMPLETE: Found ${sortedUsers.length} users for "${searchTerm}"`);
+    console.log(`✅ SEARCH COMPLETE: Found ${sortedUsers.length} users`);
     return { success: true, data: sortedUsers };
     
   } catch (error) {
     console.error('❌ SEARCH ERROR:', error);
-    
-    // Fallback to cached results if Firebase fails
-    try {
-      const cachedResults = await searchCachedUsers(searchTerm.toLowerCase());
-      console.log(`🔄 FALLBACK: Returning ${cachedResults.length} cached results`);
-      return { success: true, data: cachedResults.slice(0, limitCount), source: 'cache_fallback' };
-    } catch (cacheError) {
-      console.error('❌ Cache fallback also failed:', cacheError);
-      return { success: false, error: error.message };
-    }
+    return { success: false, error: error.message };
   }
 };
 
-// Helper function to search cached users
-const searchCachedUsers = async (searchTerm) => {
-  try {
-    const cachedUsers = [];
-    const searchKeys = [
-      'irtzalink_search_cache',
-      'irtzalink_user_cache',
-      'irtzalink_profiles_cache'
-    ];
-    
-    for (const key of searchKeys) {
-      try {
-        const cached = localStorage.getItem(key);
-        if (cached) {
-          const data = JSON.parse(cached);
-          if (Array.isArray(data)) {
-            const matches = data.filter(user => 
-              user.username?.toLowerCase().includes(searchTerm) ||
-              user.displayName?.toLowerCase().includes(searchTerm)
-            );
-            cachedUsers.push(...matches);
-          } else if (data.users && Array.isArray(data.users)) {
-            const matches = data.users.filter(user => 
-              user.username?.toLowerCase().includes(searchTerm) ||
-              user.displayName?.toLowerCase().includes(searchTerm)
-            );
-            cachedUsers.push(...matches);
-          }
-        }
-      } catch (parseError) {
-        console.warn(`⚠️ Failed to parse cached data from ${key}`);
-      }
-    }
-    
-    // Remove duplicates based on uid
-    const uniqueUsers = [];
-    const seenUids = new Set();
-    
-    for (const user of cachedUsers) {
-      if (user.uid && !seenUids.has(user.uid)) {
-        seenUids.add(user.uid);
-        uniqueUsers.push(user);
-      }
-    }
-    
-    return uniqueUsers;
-  } catch (error) {
-    console.warn('⚠️ Error searching cached users:', error);
-    return [];
-  }
-};
-
-// Helper function to cache user profiles
-const cacheUserProfile = (uid, userProfile) => {
-  try {
-    const cacheKey = `irtzalink_user_${uid}_profile`;
-    const cacheData = {
-      ...userProfile,
-      cachedAt: Date.now(),
-      cacheVersion: '2.0'
-    };
-    
-    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-    
-    // Also update the search cache
-    updateSearchCache(userProfile);
-    
-  } catch (error) {
-    console.warn('⚠️ Failed to cache user profile:', error);
-  }
-};
-
-// Helper function to update search cache
-const updateSearchCache = (userProfile) => {
-  try {
-    const searchCacheKey = 'irtzalink_search_cache';
-    let searchCache = [];
-    
-    try {
-      const existing = localStorage.getItem(searchCacheKey);
-      if (existing) {
-        searchCache = JSON.parse(existing);
-      }
-    } catch (e) {
-      searchCache = [];
-    }
-    
-    // Remove existing entry for this user
-    searchCache = searchCache.filter(user => user.uid !== userProfile.uid);
-    
-    // Add updated profile
-    searchCache.unshift(userProfile);
-    
-    // Keep only the most recent 200 profiles
-    if (searchCache.length > 200) {
-      searchCache = searchCache.slice(0, 200);
-    }
-    
-    localStorage.setItem(searchCacheKey, JSON.stringify(searchCache));
-    
-  } catch (error) {
-    console.warn('⚠️ Failed to update search cache:', error);
-  }
-};
 
 // Social Features - Instagram-like Follow System Only
 
