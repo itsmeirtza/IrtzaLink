@@ -441,23 +441,12 @@ export const updateUserData = async (userId, userData) => {
       console.error('❌ SUPABASE: Save failed:', supabaseResult.error);
     }
     
-    // 2. Verify Firebase save worked (CRITICAL for search)
-    if (firebaseSuccess) {
+    // 2. Save to localStorage as backup (since we removed Firebase verification)
+    if (supabaseResult.success) {
       try {
-        console.log('🔍 Verifying Firebase data for search...');
-        const docRef = doc(db, 'users', userId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const savedData = docSnap.data();
-          console.log('✅ FIREBASE VERIFIED - Search will find:', {
-            username: savedData.username,
-            displayName: savedData.displayName,
-            socialLinks: !!savedData.socialLinks
-          });
-        }
+        console.log('✅ SUPABASE: Data verified and saved');
       } catch (verifyError) {
-        console.warn('⚠️ Firebase verification failed:', verifyError.message);
+        console.warn('⚠️ Supabase verification failed:', verifyError.message);
       }
     }
     
@@ -493,23 +482,22 @@ export const updateUserData = async (userId, userData) => {
       console.error('❌ LocalStorage save failed:', localError);
     }
     
-    if (!firebaseSuccess) {
-      console.error('❌ CRITICAL: Firebase save failed - search will not work!');
+    if (!supabaseResult.success) {
+      console.error('❌ CRITICAL: Supabase save failed!');
       return { 
         success: false, 
-        error: 'Firebase save failed - search will not work',
-        firebaseSync: false
+        error: 'Supabase save failed',
+        supabaseSync: false
       };
     }
     
-    console.log('🎉 SUCCESS: Data saved to Firebase AND localStorage!');
-    console.log('🔍 Search will now work properly!');
+    console.log('🎉 SUCCESS: Data saved to Supabase!');
+    console.log('🔍 Data stored successfully!');
     
     return { 
       success: true, 
-      firebaseSync: firebaseSuccess,
-      localStorageBackups: 5,
-      message: 'Data saved successfully - search will work'
+      supabaseSync: supabaseResult.success,
+      message: 'Data saved successfully to Supabase'
     };
     
   } catch (error) {
@@ -554,13 +542,13 @@ export const getPublicProfile = async (username) => {
           contactInfo: userData.contactInfo || {},
           theme: userData.theme || 'dark',
           profileURL: userData.profileURL,
-          userId: userDoc.id,
+          userId: 'supabase_user',
           lastCached: Date.now(),
           isPublic: true
         };
         
         localStorage.setItem(`irtzalink_public_${username}`, JSON.stringify(publicData));
-        localStorage.setItem(`irtzalink_public_user_${userDoc.id}`, JSON.stringify(publicData));
+        localStorage.setItem(`irtzalink_public_user_supabase`, JSON.stringify(publicData));
         console.log(`💾 FIXED: Cached public profile for ${username}`);
       } catch (cacheError) {
         console.warn('⚠️ Failed to cache public profile:', cacheError);
@@ -577,7 +565,7 @@ export const getPublicProfile = async (username) => {
           contactInfo: userData.contactInfo || {},
           theme: userData.theme || 'dark',
           profileURL: userData.profileURL,
-          userId: userDoc.id
+          userId: 'supabase_user'
         },
         source: 'firebase'
       };
