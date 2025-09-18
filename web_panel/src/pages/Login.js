@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail, createUser } from '../services/firebase';
-import { getDefaultUserData } from '../utils/avatars';
+import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../services/firebase';
+import firestoreService from '../services/firestoreService';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
@@ -29,13 +29,22 @@ const Login = ({ darkMode, toggleDarkMode }) => {
       const result = await signInWithGoogle();
       const user = result.user;
       
-      // Create user document if it's a new user
-      const userData = getDefaultUserData(user, 'neutral', null);
-      // Generate a unique username based on display name or email
-      userData.username = (user.displayName || user.email.split('@')[0]).toLowerCase().replace(/\s+/g, '');
-      await createUser(user.uid, userData);
+      console.log('🔥 LOGIN: Google signin successful, initializing user in Firestore');
       
-      toast.success('Welcome to IrtzaLink!');
+      // Initialize user in Firestore (will create if new, or return existing)
+      const initResult = await firestoreService.initializeUser(user.uid, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL
+      });
+      
+      if (initResult.success) {
+        toast.success(initResult.isNew ? 'Welcome to IrtzaLink!' : 'Welcome back!');
+        console.log('✅ LOGIN: User initialized in Firestore');
+      } else {
+        console.error('❌ LOGIN: Failed to initialize user:', initResult.error);
+        toast.success('Signed in successfully!');
+      }
     } catch (error) {
       toast.error(error.message || 'Error signing in with Google');
       console.error('Google sign-in error:', error);
@@ -70,17 +79,22 @@ const Login = ({ darkMode, toggleDarkMode }) => {
         const result = await signUpWithEmail(formData.email, formData.password);
         const user = result.user;
         
-        // Create user document with custom display name
-        const userWithName = {
-          ...user,
-          displayName: formData.displayName || user.email.split('@')[0]
-        };
-        const userData = getDefaultUserData(userWithName, 'neutral', null);
-        // Generate a unique username based on display name
-        userData.username = (formData.displayName || user.email.split('@')[0]).toLowerCase().replace(/\s+/g, '');
-        await createUser(user.uid, userData);
+        console.log('🔥 LOGIN: Email signup successful, initializing user in Firestore');
         
-        toast.success('Account created successfully!');
+        // Initialize user in Firestore
+        const initResult = await firestoreService.initializeUser(user.uid, {
+          displayName: formData.displayName || user.email.split('@')[0],
+          email: user.email,
+          photoURL: user.photoURL
+        });
+        
+        if (initResult.success) {
+          toast.success('Account created successfully!');
+          console.log('✅ LOGIN: User created and initialized in Firestore');
+        } else {
+          console.error('❌ LOGIN: Failed to initialize user:', initResult.error);
+          toast.success('Account created!');
+        }
       }
     } catch (error) {
       toast.error(error.message || 'Authentication error');

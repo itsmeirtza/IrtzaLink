@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
-import { userSync } from './services/userSync';
+import firestoreService from './services/firestoreService';
 // Import diagnostics for easier debugging
 import './utils/dataPersistenceDiagnostics';
 
@@ -78,34 +78,68 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          console.log('🔥 User signed in, initializing data sync...', firebaseUser.uid);
+          console.log('🔥 FIRESTORE: User signed in, loading data...', firebaseUser.uid);
           
-          // Use new UserSync service - FIXES ALL DATA SYNC ISSUES!
-          const result = await userSync.initializeUserData(firebaseUser.uid);
+          // Initialize user data with new Firestore service
+          const initResult = await firestoreService.initializeUser(firebaseUser.uid, {
+            displayName: firebaseUser.displayName,
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL
+          });
           
-          if (result.success) {
-            const enhancedUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: result.data.displayName || firebaseUser.displayName,
-              photoURL: result.data.photoURL || firebaseUser.photoURL,
-              emailVerified: firebaseUser.emailVerified,
-              userData: result.data,
-              dataSource: result.source || 'firestore'
-            };
+          if (initResult.success) {
+            // Get full user data
+            const userResult = await firestoreService.getUserData(firebaseUser.uid);
             
-            console.log('✅ User data loaded successfully:', {
-              username: result.data.username,
-              hasUsername: !!result.data.username,
-              hasBio: !!result.data.bio,
-              socialLinksCount: Object.keys(result.data.socialLinks || {}).length,
-              contactInfoCount: Object.keys(result.data.contactInfo || {}).length
-            });
-            
-            setUser(enhancedUser);
-            
+            if (userResult.success) {
+              const enhancedUser = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: userResult.data.display_name || firebaseUser.displayName,
+                photoURL: userResult.data.profile_pic_url || firebaseUser.photoURL,
+                emailVerified: firebaseUser.emailVerified,
+                userData: userResult.data,
+                dataSource: userResult.source || 'firestore'
+              };
+              
+              console.log('✅ FIRESTORE: User data loaded successfully:', {
+                display_name: userResult.data.display_name,
+                username: userResult.data.username,
+                hasProfilePic: !!userResult.data.profile_pic_url,
+                socialLinksCount: Object.keys(userResult.data.social_links || {}).length,
+                isNew: initResult.isNew
+              });
+              
+              setUser(enhancedUser);
+              
+              // Setup real-time listener for data changes
+              firestoreService.setupRealtimeListener(firebaseUser.uid, (updatedData) => {
+                setUser(prevUser => ({
+                  ...prevUser,
+                  userData: updatedData,
+                  displayName: updatedData.display_name || prevUser.displayName,
+                  photoURL: updatedData.profile_pic_url || prevUser.photoURL
+                }));
+              });
+              
+            } else {
+              console.error('❌ FIRESTORE: Failed to load user data:', userResult.error);
+              
+              // Create basic user object as fallback
+              const basicUser = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+                emailVerified: firebaseUser.emailVerified,
+                userData: null,
+                dataSource: 'error_fallback'
+              };
+              
+              setUser(basicUser);
+            }
           } else {
-            console.error('❌ Failed to initialize user data:', result.error);
+            console.error('❌ FIRESTORE: Failed to initialize user:', initResult.error);
             
             // Create basic user object as fallback
             const basicUser = {
@@ -115,14 +149,14 @@ function App() {
               photoURL: firebaseUser.photoURL,
               emailVerified: firebaseUser.emailVerified,
               userData: null,
-              dataSource: 'error_fallback'
+              dataSource: 'init_error'
             };
             
             setUser(basicUser);
           }
           
         } catch (error) {
-          console.error('❌ Error in auth state change:', error);
+          console.error('❌ FIRESTORE: Error in auth state change:', error);
           
           // Fallback to basic user
           const basicUser = {
@@ -138,19 +172,18 @@ function App() {
           setUser(basicUser);
         }
       } else {
-        console.log('🚪 User signed out - PRESERVING ALL DATA');
+        console.log('🚪 FIRESTORE: User signed out - Data remains in Firestore');
         
-        // If there was a user, use safe logout to preserve data
+        // Clean up listeners
         if (user && user.uid) {
-          userSync.safeLogout(user.uid);
+          firestoreService.cleanup(user.uid);
         }
         
         setUser(null);
         
-        // Clean up listeners but PRESERVE user data for quick re-login
-        // This prevents data loss when switching accounts or re-logging
-        console.log('✅ User data preserved for quick re-login');
-        console.log('💾 Profile, bio, social links - ALL SAFE!');
+        // Data persists in Firestore - no data loss!
+        console.log('✅ FIRESTORE: All data preserved in cloud storage');
+        console.log('💾 FIRESTORE: Profile, links, pics - ALL SAFE in Firestore!');
       }
       setLoading(false);
     });
