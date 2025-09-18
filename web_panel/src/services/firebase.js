@@ -38,6 +38,9 @@ export const logout = () => signOut(auth);
 // Export onAuthStateChanged for App.js
 export { onAuthStateChanged } from 'firebase/auth';
 
+// Export Firestore functions for unified storage
+export { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+
 // Firestore helpers
 export const createUser = async (userId, userData) => {
   try {

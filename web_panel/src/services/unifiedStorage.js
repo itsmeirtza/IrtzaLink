@@ -21,19 +21,21 @@ import {
 class UnifiedStorage {
   constructor() {
     this.memoryCache = new Map();
-    this.isOnline = navigator.onLine;
+    this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     
-    // Listen for online/offline
-    window.addEventListener('online', () => {
-      this.isOnline = true;
-      console.log('🌐 Back online - syncing data...');
-      this.syncPendingData();
-    });
-    
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-      console.log('📱 Offline mode - using local cache');
-    });
+    // Listen for online/offline (only in browser)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        this.isOnline = true;
+        console.log('🌐 Back online - syncing data...');
+        this.syncPendingData();
+      });
+      
+      window.addEventListener('offline', () => {
+        this.isOnline = false;
+        console.log('📱 Offline mode - using local cache');
+      });
+    }
     
     console.log('🔄 Unified Storage initialized - Single source of truth!');
   }
