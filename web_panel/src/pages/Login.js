@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../services/firebase';
-import firestoreService from '../services/firestoreService';
+import supabaseService from '../services/supabaseService';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
@@ -29,10 +29,10 @@ const Login = ({ darkMode, toggleDarkMode }) => {
       const result = await signInWithGoogle();
       const user = result.user;
       
-      console.log('🔥 LOGIN: Google signin successful, initializing user in Firestore');
+      console.log('🔥 LOGIN: Google signin successful, initializing user in Supabase');
       
-      // Initialize user in Firestore (will create if new, or return existing)
-      const initResult = await firestoreService.initializeUser(user.uid, {
+      // Initialize user in Supabase (will create if new, or return existing)
+      const initResult = await supabaseService.initializeUser(user.uid, {
         displayName: user.displayName,
         email: user.email,
         photoURL: user.photoURL
@@ -79,10 +79,10 @@ const Login = ({ darkMode, toggleDarkMode }) => {
         const result = await signUpWithEmail(formData.email, formData.password);
         const user = result.user;
         
-        console.log('🔥 LOGIN: Email signup successful, initializing user in Firestore');
+        console.log('🔥 LOGIN: Email signup successful, initializing user in Supabase');
         
-        // Initialize user in Firestore
-        const initResult = await firestoreService.initializeUser(user.uid, {
+        // Initialize user in Supabase
+        const initResult = await supabaseService.initializeUser(user.uid, {
           displayName: formData.displayName || user.email.split('@')[0],
           email: user.email,
           photoURL: user.photoURL

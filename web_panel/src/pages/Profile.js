@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import firestoreService from '../services/firestoreService';
+import supabaseService from '../services/supabaseService';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -81,7 +81,7 @@ const Profile = ({ user }) => {
   const loadUserData = async () => {
     try {
       console.log('🔍 PROFILE: Loading user data from Firestore');
-      const result = await firestoreService.getUserData(user.uid);
+      const result = await supabaseService.getUserData(user.uid);
       
       if (result.success) {
         const userData = result.data;

@@ -1,7 +1,8 @@
 /**
- * SUPABASE STORAGE SERVICE - 100% FREE ALTERNATIVE TO FIREBASE
- * PostgreSQL database with 500MB free storage
- * GUARANTEED data persistence - NO DATA LOSS!
+ * FIREBASE AUTH + SUPABASE DATA INTEGRATION
+ * - Firebase handles authentication (login/logout)
+ * - Supabase handles user data storage (profiles, links, etc)
+ * - Data persists even after Firebase logout - NO DATA LOSS!
  */
 
 import supabaseClient from './supabaseClient';
@@ -30,6 +31,62 @@ class SupabaseService {
     }
     this.isConfigured = true;
     return true;
+  }
+
+  // Initialize user on first login (create if not exists)
+  async initializeUser(firebaseUserId, firebaseUserData = {}) {
+    try {
+      if (!this.checkConfiguration()) {
+        return { success: false, error: 'Supabase not configured', isNew: false };
+      }
+
+      console.log(`🚀 SUPABASE INIT: Setting up user ${firebaseUserId.slice(0, 8)}...`);
+      
+      // Check if user exists first
+      const existingUser = await this.getUserData(firebaseUserId);
+      
+      if (existingUser.success) {
+        console.log('✅ SUPABASE INIT: User exists, loading existing data');
+        return { 
+          success: true, 
+          data: existingUser.data, 
+          isNew: false,
+          message: 'Existing user loaded from Supabase' 
+        };
+      }
+      
+      // Create new user record
+      const newUserData = {
+        display_name: firebaseUserData.displayName || firebaseUserData.email?.split('@')[0] || 'User',
+        email: firebaseUserData.email || '',
+        username: '', // To be set later
+        bio: '',
+        photo_url: firebaseUserData.photoURL || '',
+        social_links: {},
+        contact_info: { email: firebaseUserData.email || '' },
+        theme: 'dark',
+        profile_url: '',
+        is_active: true
+      };
+      
+      const saveResult = await this.saveUserData(firebaseUserId, newUserData);
+      
+      if (saveResult.success) {
+        console.log('✅ SUPABASE INIT: New user created successfully');
+        return { 
+          success: true, 
+          data: { uid: firebaseUserId, ...newUserData }, 
+          isNew: true,
+          message: 'New user created in Supabase' 
+        };
+      } else {
+        throw new Error(saveResult.error);
+      }
+      
+    } catch (error) {
+      console.error('❌ SUPABASE INIT: Error initializing user:', error);
+      return { success: false, error: error.message, isNew: false };
+    }
   }
 
   // Save user data to Supabase

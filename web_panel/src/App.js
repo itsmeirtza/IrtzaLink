@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
-import firestoreService from './services/firestoreService';
-// Import diagnostics for easier debugging
-import './utils/dataPersistenceDiagnostics';
+import supabaseService from './services/supabaseService';
 
 // Components
 import Navbar from './components/Navbar';
@@ -30,6 +28,7 @@ import FollowTest from './pages/FollowTest';
 import FollowersPage from './pages/FollowersPage';
 import FollowingPage from './pages/FollowingPage';
 import GetVerified from './pages/GetVerified';
+import VerifiedStatus from './pages/VerifiedStatus';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -78,68 +77,41 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          console.log('🔥 FIRESTORE: User signed in, loading data...', firebaseUser.uid);
+          console.log('🔥 FIREBASE AUTH: User signed in, loading data from Supabase...', firebaseUser.uid);
           
-          // Initialize user data with new Firestore service
-          const initResult = await firestoreService.initializeUser(firebaseUser.uid, {
+          // Initialize user data with Supabase service
+          const initResult = await supabaseService.initializeUser(firebaseUser.uid, {
             displayName: firebaseUser.displayName,
             email: firebaseUser.email,
             photoURL: firebaseUser.photoURL
           });
           
           if (initResult.success) {
-            // Get full user data
-            const userResult = await firestoreService.getUserData(firebaseUser.uid);
+            // User data already loaded by initializeUser
+            const userData = initResult.data;
             
-            if (userResult.success) {
-              const enhancedUser = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: userResult.data.display_name || firebaseUser.displayName,
-                photoURL: userResult.data.profile_pic_url || firebaseUser.photoURL,
-                emailVerified: firebaseUser.emailVerified,
-                userData: userResult.data,
-                dataSource: userResult.source || 'firestore'
-              };
+            const enhancedUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: userData.displayName || firebaseUser.displayName,
+              photoURL: userData.photoURL || firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+              userData: userData,
+              dataSource: 'supabase'
+            };
+            
+            console.log('✅ SUPABASE: User data loaded successfully:', {
+              display_name: userData.displayName,
+              username: userData.username,
+              hasProfilePic: !!userData.photoURL,
+              socialLinksCount: Object.keys(userData.socialLinks || {}).length,
+              isNew: initResult.isNew
+            });
+            
+            setUser(enhancedUser);
               
-              console.log('✅ FIRESTORE: User data loaded successfully:', {
-                display_name: userResult.data.display_name,
-                username: userResult.data.username,
-                hasProfilePic: !!userResult.data.profile_pic_url,
-                socialLinksCount: Object.keys(userResult.data.social_links || {}).length,
-                isNew: initResult.isNew
-              });
-              
-              setUser(enhancedUser);
-              
-              // Setup real-time listener for data changes
-              firestoreService.setupRealtimeListener(firebaseUser.uid, (updatedData) => {
-                setUser(prevUser => ({
-                  ...prevUser,
-                  userData: updatedData,
-                  displayName: updatedData.display_name || prevUser.displayName,
-                  photoURL: updatedData.profile_pic_url || prevUser.photoURL
-                }));
-              });
-              
-            } else {
-              console.error('❌ FIRESTORE: Failed to load user data:', userResult.error);
-              
-              // Create basic user object as fallback
-              const basicUser = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
-                photoURL: firebaseUser.photoURL,
-                emailVerified: firebaseUser.emailVerified,
-                userData: null,
-                dataSource: 'error_fallback'
-              };
-              
-              setUser(basicUser);
-            }
           } else {
-            console.error('❌ FIRESTORE: Failed to initialize user:', initResult.error);
+            console.error('❌ SUPABASE: Failed to initialize user:', initResult.error);
             
             // Create basic user object as fallback
             const basicUser = {
@@ -149,14 +121,14 @@ function App() {
               photoURL: firebaseUser.photoURL,
               emailVerified: firebaseUser.emailVerified,
               userData: null,
-              dataSource: 'init_error'
+              dataSource: 'supabase_error'
             };
             
             setUser(basicUser);
           }
           
         } catch (error) {
-          console.error('❌ FIRESTORE: Error in auth state change:', error);
+          console.error('❌ SUPABASE: Error in auth state change:', error);
           
           // Fallback to basic user
           const basicUser = {
@@ -172,18 +144,19 @@ function App() {
           setUser(basicUser);
         }
       } else {
-        console.log('🚪 FIRESTORE: User signed out - Data remains in Firestore');
+        console.log('🚺 FIREBASE AUTH: User signed out - Data safely stored in Supabase');
         
-        // Clean up listeners
+        // Perform safe logout (data remains in Supabase)
         if (user && user.uid) {
-          firestoreService.cleanup(user.uid);
+          supabaseService.safeLogout(user.uid);
         }
         
         setUser(null);
         
-        // Data persists in Firestore - no data loss!
-        console.log('✅ FIRESTORE: All data preserved in cloud storage');
-        console.log('💾 FIRESTORE: Profile, links, pics - ALL SAFE in Firestore!');
+        // Data persists in Supabase - NO DATA LOSS!
+        console.log('✅ SUPABASE: All data preserved in cloud database');
+        console.log('💾 SUPABASE: Profile, links, pics - ALL SAFE in Supabase!');
+        console.log('🔄 SUPABASE: Next login will restore everything instantly!');
       }
       setLoading(false);
     });
@@ -279,6 +252,7 @@ function App() {
                 <Route path="/profile" element={<Profile user={user} />} />
                 <Route path="/analytics" element={<Analytics user={user} />} />
                 <Route path="/get-verified" element={<GetVerified user={user} />} />
+                <Route path="/verified" element={<VerifiedStatus user={user} />} />
                 <Route path="/settings" element={<Settings user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/admin" element={<Admin user={user} />} />
                 <Route path="/follow-test" element={<FollowTest user={user} />} />
