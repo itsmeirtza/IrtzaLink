@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { uploadProfileImage, reserveUsernameLocal, checkUsernameAvailabilityLocal } from '../services/firebase';
-import { getUserData, saveUserData } from '../services/unifiedStorage';
+import { getUserData, saveUserData } from '../services/dataStorage';
 import { loadUserDataPermanently, updateUserDataPermanently } from '../services/permanentStorage';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';

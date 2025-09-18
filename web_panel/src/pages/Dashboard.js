@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserAnalytics } from '../services/firebase';
-import { getUserData, searchUsers } from '../services/unifiedStorage';
+import { getUserData, searchUsers } from '../services/dataStorage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';

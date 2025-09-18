@@ -1,6 +1,6 @@
 import React from 'react';
 import { logout } from '../services/firebase';
-import { clearUserData } from '../services/unifiedStorage';
+import { clearUserData } from '../services/dataStorage';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 

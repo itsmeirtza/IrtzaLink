@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { trackProfileVisit } from '../services/firebase';
-import { getUserData } from '../services/unifiedStorage';
+import { getUserData } from '../services/dataStorage';
 import FollowButton from '../components/FollowButton';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';

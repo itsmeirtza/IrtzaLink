@@ -4,7 +4,7 @@ import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
 import { trackQRScan } from '../services/firebase';
-import { getPublicProfile } from '../services/unifiedStorage';
+import { getPublicProfile } from '../services/dataStorage';
 
 const PublicProfile = () => {
   const { username } = useParams();
