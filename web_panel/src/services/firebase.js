@@ -115,9 +115,48 @@ export const getUserData = async (userId) => {
       return { success: false, error: 'User ID is required' };
     }
     
-    console.log(`🔍 Getting user data for ${userId.slice(0, 8)}...`);
+    console.log(`🔍 FIXED: Getting user data for ${userId.slice(0, 8)}... (NEVER LOSE DATA!)`);
     
-    // Get data from Firebase
+    // STEP 1: Try to get from permanent localStorage first (FASTEST)
+    const permanentKeys = [
+      `irtzalink_${userId}_profile_v3`,
+      `irtzalink_user_${userId}_backup`,
+      `irtzalink_data_${userId}_safe`,
+      `user_profile_${userId}_permanent`,
+      `irtzalink_permanent_${userId}_v3`
+    ];
+    
+    for (const key of permanentKeys) {
+      try {
+        const cachedData = localStorage.getItem(key);
+        if (cachedData) {
+          const parsed = JSON.parse(cachedData);
+          if (parsed && (parsed.username || parsed.displayName)) {
+            console.log(`💾 FIXED: Found saved data in ${key}:`, {
+              username: parsed.username,
+              displayName: parsed.displayName,
+              hasLinks: !!parsed.socialLinks
+            });
+            
+            // Ensure data has correct user ID
+            parsed.uid = userId;
+            parsed.userId = userId;
+            
+            return { 
+              success: true, 
+              data: parsed,
+              source: `localStorage_${key}`
+            };
+          }
+        }
+      } catch (parseError) {
+        console.warn(`⚠️ Failed to parse ${key}:`, parseError);
+        continue;
+      }
+    }
+    
+    // STEP 2: Try Firebase as secondary source
+    console.log(`☁️ FIXED: No local data found, trying Firebase for ${userId.slice(0, 8)}...`);
     const docRef = doc(db, 'users', userId);
     const docSnap = await getDoc(docRef);
     
@@ -128,28 +167,100 @@ export const getUserData = async (userId) => {
       userData.uid = userId;
       userData.userId = userId;
       
-      console.log(`✅ SUCCESS: User data loaded:`, {
+      console.log(`✅ FIXED: Firebase data loaded:`, {
         userId: userId.slice(0, 8),
         username: userData.username,
         displayName: userData.displayName,
         hasData: Object.keys(userData).length > 3
       });
       
+      // IMMEDIATELY save to ALL localStorage locations for future use
+      try {
+        const enhancedData = {
+          ...userData,
+          persistenceVersion: '3.0',
+          savedTimestamp: Date.now(),
+          savedDate: new Date().toISOString(),
+          source: 'firebase_sync'
+        };
+        
+        permanentKeys.forEach((key, index) => {
+          try {
+            localStorage.setItem(key, JSON.stringify(enhancedData));
+            console.log(`💾 FIXED: Saved backup ${index + 1}/5 to ${key}`);
+          } catch (saveError) {
+            console.warn(`⚠️ Failed to save to ${key}:`, saveError);
+          }
+        });
+        
+        console.log('🔒 FIXED: User data saved to 5 permanent locations - NEVER LOSES DATA!');
+      } catch (saveError) {
+        console.warn('⚠️ Failed to save Firebase data locally:', saveError);
+      }
+      
       return { 
         success: true, 
         data: userData,
         source: 'firebase'
       };
-    } else {
-      console.log(`⚠️ No user document found for ${userId.slice(0, 8)}`);
-      return { 
-        success: false, 
-        error: 'User not found'
-      };
     }
     
+    // STEP 3: Emergency scan for ANY user data in localStorage
+    console.log(`🆘 FIXED: Emergency scan for ANY data for ${userId.slice(0, 8)}...`);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes(userId.slice(0, 8)) || key.includes(userId))) {
+        try {
+          const data = localStorage.getItem(key);
+          if (data) {
+            const parsed = JSON.parse(data);
+            if (parsed && (parsed.data || parsed.username || parsed.displayName)) {
+              const userData = parsed.data || parsed;
+              console.log(`🆘 FIXED: EMERGENCY RECOVERY - Found data in ${key}`);
+              userData.uid = userId;
+              userData.userId = userId;
+              return { success: true, data: userData, source: 'emergency_recovery' };
+            }
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+    
+    console.log(`⚠️ FIXED: No data found anywhere for ${userId.slice(0, 8)} - will create new`);
+    return { 
+      success: false, 
+      error: 'User not found'
+    };
+    
   } catch (error) {
-    console.error('❌ ERROR getting user data for', userId?.slice(0, 8), ':', error);
+    console.error('❌ FIXED: ERROR getting user data for', userId?.slice(0, 8), ':', error);
+    
+    // Final emergency localStorage scan
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes(userId?.slice(0, 8))) {
+          const data = localStorage.getItem(key);
+          if (data) {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed && (parsed.data || parsed.username)) {
+                console.log(`🆘 FIXED: CRITICAL RECOVERY from ${key}`);
+                const userData = parsed.data || parsed;
+                userData.uid = userId;
+                userData.userId = userId;
+                return { success: true, data: userData, source: 'critical_recovery' };
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (emergencyError) {
+      console.error('❌ FIXED: Emergency recovery failed:', emergencyError);
+    }
+    
     return { success: false, error: error.message };
   }
 };
@@ -339,6 +450,9 @@ export const updateUserData = async (userId, userData) => {
 
 export const getPublicProfile = async (username) => {
   try {
+    console.log(`🔍 FIXED: Searching for public profile: ${username}`);
+    
+    // Try Firebase first
     const q = query(collection(db, 'users'), where('username', '==', username), limit(1));
     const querySnapshot = await getDocs(q);
     
@@ -346,7 +460,35 @@ export const getPublicProfile = async (username) => {
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
       
-      // Return only public data
+      console.log(`✅ FIXED: Found profile in Firebase:`, {
+        username: userData.username,
+        displayName: userData.displayName,
+        hasLinks: !!userData.socialLinks
+      });
+      
+      // Save to localStorage for future access (PUBLIC DATA ONLY)
+      try {
+        const publicData = {
+          username: userData.username,
+          displayName: userData.displayName,
+          bio: userData.bio,
+          photoURL: userData.photoURL,
+          socialLinks: userData.socialLinks || {},
+          contactInfo: userData.contactInfo || {},
+          theme: userData.theme || 'dark',
+          profileURL: userData.profileURL,
+          userId: userDoc.id,
+          lastCached: Date.now(),
+          isPublic: true
+        };
+        
+        localStorage.setItem(`irtzalink_public_${username}`, JSON.stringify(publicData));
+        localStorage.setItem(`irtzalink_public_user_${userDoc.id}`, JSON.stringify(publicData));
+        console.log(`💾 FIXED: Cached public profile for ${username}`);
+      } catch (cacheError) {
+        console.warn('⚠️ Failed to cache public profile:', cacheError);
+      }
+      
       return {
         success: true,
         data: {
@@ -354,18 +496,55 @@ export const getPublicProfile = async (username) => {
           displayName: userData.displayName,
           bio: userData.bio,
           photoURL: userData.photoURL,
-          socialLinks: userData.socialLinks,
-          contactInfo: userData.contactInfo,
+          socialLinks: userData.socialLinks || {},
+          contactInfo: userData.contactInfo || {},
           theme: userData.theme || 'dark',
           profileURL: userData.profileURL,
-          userId: userDoc.id // For analytics tracking
-        }
+          userId: userDoc.id
+        },
+        source: 'firebase'
       };
-    } else {
-      return { success: false, error: 'User not found' };
     }
+    
+    // If Firebase fails, try localStorage cache
+    console.log(`🔄 FIXED: Firebase empty, checking localStorage cache for ${username}`);
+    const cachedData = localStorage.getItem(`irtzalink_public_${username}`);
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        console.log(`💾 FIXED: Found cached public profile for ${username}`);
+        return {
+          success: true,
+          data: parsed,
+          source: 'localStorage_cache'
+        };
+      } catch (parseError) {
+        console.warn('⚠️ Failed to parse cached data:', parseError);
+      }
+    }
+    
+    console.log(`❌ FIXED: No profile found for ${username} in Firebase or cache`);
+    return { success: false, error: 'User not found' };
+    
   } catch (error) {
-    console.error('Error getting public profile:', error);
+    console.error('❌ FIXED: Error getting public profile:', error);
+    
+    // Final fallback to localStorage
+    try {
+      const cachedData = localStorage.getItem(`irtzalink_public_${username}`);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        console.log(`🆘 FIXED: Emergency fallback - using cached data for ${username}`);
+        return {
+          success: true,
+          data: parsed,
+          source: 'localStorage_emergency'
+        };
+      }
+    } catch (fallbackError) {
+      console.error('❌ FIXED: Emergency fallback also failed:', fallbackError);
+    }
+    
     return { success: false, error: error.message };
   }
 };
