@@ -4,8 +4,9 @@
 
 export const verifiedUsernames = [
   'ialiwaris',
-  'itsmeirtza',
+  'itsmeirtza', 
   'hakeemmuhammadnawaz',
+  'hellojuttsab', // Added your username
   // Add more verified usernames here
   // Example: 'newusername',
 ];

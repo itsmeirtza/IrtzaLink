@@ -5,8 +5,16 @@
  */
 
 // For now using REST API - no SDK dependency
-const SUPABASE_URL = 'https://your-project.supabase.co'; // Replace with your project URL
-const SUPABASE_ANON_KEY = 'your-anon-key'; // Replace with your anon key
+// SUPABASE PROJECT CONFIGURED ✅
+const SUPABASE_URL = 'https://ceeapuwdpjdlsfsntsdq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZWFwdXdkcGpkbHNmc250c2RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTgxMjcsImV4cCI6MjA3Mzc5NDEyN30.O-x1RA-4tp2YaVja7UcGNhJNhE03yTZMpC0DudyRa24';
+
+// Instructions for setup:
+// 1. Go to https://supabase.com and create FREE account
+// 2. Create new project (FREE - 500MB database)
+// 3. Go to Settings > API
+// 4. Copy Project URL and anon public key
+// 5. Replace SUPABASE_URL and SUPABASE_ANON_KEY above
 
 class SupabaseService {
   constructor() {
@@ -26,6 +34,7 @@ class SupabaseService {
       console.log('📝 SUPABASE: Not configured yet. Using localStorage fallback.');
       return false;
     }
+    console.log('✅ SUPABASE: Project configured and ready!');
     this.isConfigured = true;
     return true;
   }

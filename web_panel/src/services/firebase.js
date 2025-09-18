@@ -5,6 +5,8 @@ import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { verifiedUsernames, isVerifiedUser } from '../config/verifiedAccounts';
+// Import Supabase for data storage
+import supabaseService from './supabaseService';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -25,6 +27,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
+// Note: Primary data storage is Supabase, Firebase as fallback
 
 // Auth provider
 export const googleProvider = new GoogleAuthProvider();
@@ -34,20 +37,27 @@ export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const signInWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
 export const signUpWithEmail = (email, password) => createUserWithEmailAndPassword(auth, email, password);
 
-// SAFE LOGOUT - PRESERVES ALL USER DATA
+// SAFE LOGOUT - PRESERVES ALL USER DATA IN SUPABASE
 export const safeLogout = async () => {
   try {
     console.log('🚪 SAFE LOGOUT: Logging out user while PRESERVING ALL DATA');
-    console.log('💾 PRESERVING: Profile, bio, social links, settings - ALL SAFE!');
-    console.log('🔒 DATA PROTECTION: localStorage and Firebase data remain intact');
+    console.log('💾 SUPABASE: Profile, bio, social links, DP, settings - ALL SAFE IN DATABASE!');
+    console.log('🔒 DATA PROTECTION: All user data remains in Supabase database');
+    console.log('🔄 NEXT LOGIN: All data will be restored from Supabase instantly!');
     
-    // Only sign out from Firebase Auth - NO DATA DELETION
+    // Only sign out from Firebase Auth - NO DATA DELETION ANYWHERE
     await signOut(auth);
     
-    console.log('✅ SAFE LOGOUT: Authentication cleared, DATA PRESERVED!');
-    console.log('🔄 NEXT LOGIN: All data will be restored instantly!');
+    // Clear only auth-related localStorage (keep data cache for faster loading)
+    // DO NOT clear user data cache - it helps with faster next login
     
-    return { success: true };
+    console.log('✅ SAFE LOGOUT COMPLETE:');
+    console.log('   ✅ Authentication cleared');
+    console.log('   ✅ ALL USER DATA PRESERVED IN SUPABASE');
+    console.log('   ✅ Data cache kept for faster next login');
+    console.log('🔄 NEXT LOGIN: Instant data restoration from Supabase!');
+    
+    return { success: true, message: 'Logout successful - all data preserved' };
   } catch (error) {
     console.error('❌ SAFE LOGOUT ERROR:', error);
     return { success: false, error: error.message };
@@ -63,20 +73,53 @@ export const logout = async () => {
 // Export onAuthStateChanged for App.js
 export { onAuthStateChanged } from 'firebase/auth';
 
+// RESTORE USER DATA AFTER LOGIN
+export const restoreUserDataAfterLogin = async (userId) => {
+  try {
+    console.log(`🔄 RESTORATION: Loading saved data for user ${userId.slice(0, 8)}...`);
+    
+    // Get user data from Supabase (primary source)
+    const result = await getUserData(userId);
+    
+    if (result.success && result.data) {
+      console.log('✅ RESTORATION SUCCESS: All data restored!', {
+        username: result.data.username,
+        displayName: result.data.displayName,
+        hasLinks: !!result.data.socialLinks,
+        hasBio: !!result.data.bio,
+        hasPhoto: !!result.data.photoURL
+      });
+      
+      console.log('🎉 WELCOME BACK: Your profile, links, bio, DP - everything is restored!');
+      return result;
+    } else {
+      console.log('🆕 NEW USER: No previous data found, ready for profile setup');
+      return { success: true, data: null, isNewUser: true };
+    }
+    
+  } catch (error) {
+    console.error('❌ RESTORATION ERROR:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Export Firestore functions for unified storage
 export { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 
-// Firestore helpers
+// User data helpers - Using Supabase instead of Firestore
 export const createUser = async (userId, userData) => {
   try {
+    console.log('🔄 FIREBASE: Creating user via Supabase...');
     const userDataWithTimestamp = {
       ...userData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       isActive: true
     };
-    await setDoc(doc(db, 'users', userId), userDataWithTimestamp, { merge: true });
-    return { success: true };
+    
+    // Use Supabase for data storage
+    const result = await supabaseService.saveUserData(userId, userDataWithTimestamp);
+    return result;
   } catch (error) {
     console.error('Error creating user:', error);
     return { success: false, error: error.message };
@@ -143,9 +186,16 @@ export const getUserData = async (userId) => {
       return { success: false, error: 'User ID is required' };
     }
     
-    console.log(`🔍 FIXED: Getting user data for ${userId.slice(0, 8)}... (NEVER LOSE DATA!)`);
+    console.log(`🔍 SUPABASE: Getting user data for ${userId.slice(0, 8)}...`);
     
-    // STEP 1: Try to get from permanent localStorage first (FASTEST)
+    // STEP 1: Try Supabase first (primary data source)
+    const supabaseResult = await supabaseService.getUserData(userId);
+    if (supabaseResult.success) {
+      console.log('✅ SUPABASE: Found user data');
+      return supabaseResult;
+    }
+    
+    // STEP 2: Fallback to localStorage cache
     const permanentKeys = [
       `irtzalink_${userId}_profile_v3`,
       `irtzalink_user_${userId}_backup`,
@@ -160,11 +210,7 @@ export const getUserData = async (userId) => {
         if (cachedData) {
           const parsed = JSON.parse(cachedData);
           if (parsed && (parsed.username || parsed.displayName)) {
-            console.log(`💾 FIXED: Found saved data in ${key}:`, {
-              username: parsed.username,
-              displayName: parsed.displayName,
-              hasLinks: !!parsed.socialLinks
-            });
+            console.log(`💾 CACHE: Found cached data in ${key}`);
             
             // Ensure data has correct user ID
             parsed.uid = userId;
@@ -173,7 +219,7 @@ export const getUserData = async (userId) => {
             return { 
               success: true, 
               data: parsed,
-              source: `localStorage_${key}`
+              source: `localStorage_cache`
             };
           }
         }
@@ -363,14 +409,14 @@ export const updateUserData = async (userId, userData) => {
       throw new Error('User ID is required');
     }
     
-    console.log('🔥 FORCING FIREBASE SYNC - SEARCH WILL WORK!');
+    console.log('🔄 SUPABASE: Updating user data...');
     
     // Validate data before saving
     const cleanedData = {
       ...userData,
       userId: userId,
-      updatedAt: new Date(),
-      lastSyncedAt: new Date()
+      updatedAt: new Date().toISOString(),
+      lastSyncedAt: new Date().toISOString()
     };
     
     // Remove any undefined values
@@ -380,46 +426,19 @@ export const updateUserData = async (userId, userData) => {
       }
     });
     
-    console.log('🔥 FORCING Firebase save for search:', {
+    console.log('💾 SUPABASE: Saving user data:', {
       userId: userId.slice(0, 8),
       username: cleanedData.username,
       displayName: cleanedData.displayName
     });
     
-    // 1. FORCE FIREBASE SAVE FIRST (for search to work)
-    let firebaseSuccess = false;
-    let attempts = 0;
-    const maxAttempts = 5;
+    // 1. Save to Supabase (primary data store)
+    const supabaseResult = await supabaseService.saveUserData(userId, cleanedData);
     
-    while (!firebaseSuccess && attempts < maxAttempts) {
-      attempts++;
-      try {
-        console.log(`🔥 Firebase save attempt ${attempts}/${maxAttempts}`);
-        
-        // Try update first
-        try {
-          const docRef = doc(db, 'users', userId);
-          await updateDoc(docRef, cleanedData);
-          firebaseSuccess = true;
-          console.log('✅ FIREBASE SUCCESS: Data updated!');
-        } catch (updateError) {
-          // If update fails, try setDoc
-          console.log('📝 Update failed, trying setDoc...');
-          const docRef = doc(db, 'users', userId);
-          await setDoc(docRef, cleanedData, { merge: true });
-          firebaseSuccess = true;
-          console.log('✅ FIREBASE SUCCESS: Document created!');
-        }
-        
-      } catch (firebaseError) {
-        console.error(`❌ Firebase attempt ${attempts} failed:`, firebaseError.message);
-        if (attempts === maxAttempts) {
-          console.error('❌ ALL FIREBASE ATTEMPTS FAILED!');
-        } else {
-          // Wait 1 second before retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
+    if (supabaseResult.success) {
+      console.log('✅ SUPABASE: Data saved successfully!');
+    } else {
+      console.error('❌ SUPABASE: Save failed:', supabaseResult.error);
     }
     
     // 2. Verify Firebase save worked (CRITICAL for search)
@@ -501,21 +520,28 @@ export const updateUserData = async (userId, userData) => {
 
 export const getPublicProfile = async (username) => {
   try {
-    console.log(`🔍 FIXED: Searching for public profile: ${username}`);
+    console.log(`🔍 SUPABASE: Searching for public profile: ${username}`);
     
-    // Try Firebase first
-    const q = query(collection(db, 'users'), where('username', '==', username), limit(1));
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-      
-      console.log(`✅ FIXED: Found profile in Firebase:`, {
-        username: userData.username,
-        displayName: userData.displayName,
-        hasLinks: !!userData.socialLinks
+    // Try Supabase first (primary data source)
+    const supabaseResult = await supabaseService.getPublicProfile(username);
+    if (supabaseResult.success) {
+      console.log(`✅ SUPABASE: Found profile:`, {
+        username: supabaseResult.data.username,
+        display_name: supabaseResult.data.display_name,
+        hasLinks: !!supabaseResult.data.social_links
       });
+      
+      // Convert Supabase format to frontend format
+      const userData = {
+        username: supabaseResult.data.username,
+        displayName: supabaseResult.data.display_name,
+        bio: supabaseResult.data.bio,
+        photoURL: supabaseResult.data.photo_url,
+        socialLinks: supabaseResult.data.social_links || {},
+        contactInfo: supabaseResult.data.contact_info || {},
+        theme: supabaseResult.data.theme || 'dark',
+        profileURL: supabaseResult.data.profile_url
+      };
       
       // Save to localStorage for future access (PUBLIC DATA ONLY)
       try {
