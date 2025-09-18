@@ -78,8 +78,8 @@ class UserSyncService {
         console.log('✅ New user document created in Firestore');
       }
       
-      // Isolate user data to prevent cross-user interference
-      this.isolateUserData(userId);
+    // DISABLED: Do not isolate user data to prevent data loss
+    // this.isolateUserData(userId); // COMMENTED OUT TO PRESERVE DATA
       
       // Cache the data locally
       this.userDataCache.set(userId, userData);
@@ -239,39 +239,38 @@ class UserSyncService {
   }
 
   /**
-   * Isolate user data by user ID - FIXES ACCOUNT SWITCHING ISSUE
+   * SAFE USER ISOLATION - NO DATA DELETION
    */
   isolateUserData(currentUserId) {
-    // Only keep current user's data in cache, clear others
+    console.log(`🔒 SAFE ISOLATION: Processing user ${currentUserId.slice(0, 8)} - NO DATA WILL BE DELETED`);
+    
+    // Only manage memory cache, DO NOT touch localStorage
     const currentUserData = this.userDataCache.get(currentUserId);
+    
+    // Clear other users from memory cache only
     this.userDataCache.clear();
     
     if (currentUserData) {
       this.userDataCache.set(currentUserId, currentUserData);
     }
     
-    // Clean up localStorage from other users (keep only current user)
-    const keysToKeep = [];
-    const keysToRemove = [];
+    // Count localStorage keys but DO NOT DELETE ANYTHING
+    let totalKeys = 0;
+    let currentUserKeys = 0;
     
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('irtzalink_')) {
+        totalKeys++;
         if (key.includes(currentUserId)) {
-          keysToKeep.push(key);
-        } else {
-          keysToRemove.push(key);
+          currentUserKeys++;
         }
       }
     }
     
-    // Remove other users' data to prevent interference
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      console.log(`🧹 Removed other user data: ${key}`);
-    });
-    
-    console.log(`🔒 Data isolated for user ${currentUserId}: kept ${keysToKeep.length} keys, removed ${keysToRemove.length} keys`);
+    console.log(`✅ SAFE ISOLATION: Memory cache cleared, localStorage PRESERVED`);
+    console.log(`📊 SAFE ISOLATION: Found ${currentUserKeys} keys for current user, ${totalKeys} total`);
+    console.log(`💾 SAFE ISOLATION: ALL DATA REMAINS SAFE - no deletion performed`);
   }
 
   /**

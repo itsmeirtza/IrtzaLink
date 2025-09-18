@@ -71,22 +71,22 @@ Thank you!`);
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 text-center">
                   Preview: Your Verified Profile
                 </h3>
-                <div className="flex items-center justify-center space-x-2">
+                <div className="flex flex-col items-center space-y-3">
                   <img
                     src={user.userData.photoURL || user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.userData.displayName || user.displayName || 'User')}&background=3b82f6&color=ffffff`}
                     alt="Profile Preview"
-                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
+                    className="w-16 h-16 rounded-full object-cover border-3 border-blue-200 dark:border-blue-600 shadow-lg"
                   />
                   <div className="text-center">
-                    <div className="flex items-center space-x-1">
-                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {user.userData.displayName || user.displayName || 'Your Name'}
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                      {user.userData.displayName || user.displayName || 'Your Name'}
+                    </h4>
+                    <div className="flex items-center justify-center space-x-1">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        @{user.userData.username}
                       </span>
-                      <CheckBadgeIcon className="w-5 h-5 text-blue-500" title="Verified" />
+                      <CheckBadgeIcon className="w-4 h-4 text-blue-500 ml-1" title="Verified" />
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      @{user.userData.username}
-                    </p>
                   </div>
                 </div>
               </div>

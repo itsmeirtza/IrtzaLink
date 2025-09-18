@@ -19,12 +19,13 @@ const Settings = ({ user, darkMode, toggleDarkMode }) => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
-        // Clear only memory cache - ALL DATA PRESERVED!
-        StorageManager.clearUserData(user.uid);
-        console.log('🔒 SAFE LOGOUT: User data 100% preserved in Firebase');
+        // USE SAFE LOGOUT - PRESERVE ALL DATA
+        StorageManager.safeLogout(user.uid);
+        console.log('🔒 SAFE LOGOUT: User data 100% preserved in Firebase and localStorage');
+        console.log('💾 PRESERVED: Profile, bio, social links, settings - ALL SAFE!');
         
         await logout();
-        toast.success('Logged out successfully!');
+        toast.success('Logged out successfully! Your data is preserved.');
         navigate('/login');
       } catch (error) {
         toast.error('Error logging out');

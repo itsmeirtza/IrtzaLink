@@ -33,7 +33,32 @@ export const googleProvider = new GoogleAuthProvider();
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const signInWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
 export const signUpWithEmail = (email, password) => createUserWithEmailAndPassword(auth, email, password);
-export const logout = () => signOut(auth);
+
+// SAFE LOGOUT - PRESERVES ALL USER DATA
+export const safeLogout = async () => {
+  try {
+    console.log('🚪 SAFE LOGOUT: Logging out user while PRESERVING ALL DATA');
+    console.log('💾 PRESERVING: Profile, bio, social links, settings - ALL SAFE!');
+    console.log('🔒 DATA PROTECTION: localStorage and Firebase data remain intact');
+    
+    // Only sign out from Firebase Auth - NO DATA DELETION
+    await signOut(auth);
+    
+    console.log('✅ SAFE LOGOUT: Authentication cleared, DATA PRESERVED!');
+    console.log('🔄 NEXT LOGIN: All data will be restored instantly!');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('❌ SAFE LOGOUT ERROR:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Legacy logout function (redirects to safe logout)
+export const logout = async () => {
+  console.log('🔄 LEGACY LOGOUT: Redirecting to safe logout');
+  return await safeLogout();
+};
 
 // Export onAuthStateChanged for App.js
 export { onAuthStateChanged } from 'firebase/auth';
