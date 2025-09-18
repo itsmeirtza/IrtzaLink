@@ -273,6 +273,28 @@ class UnifiedStorage {
         await setDoc(docRef, userData, { merge: true });
       }
       
+      // ALSO save as public profile cache (INDEPENDENT of auth state)
+      if (userData.username && typeof localStorage !== 'undefined') {
+        try {
+          const publicProfileData = this.formatPublicProfile(userData);
+          const publicKeys = [
+            `irtzalink_public_${userData.username.toLowerCase()}`,
+            `irtzalink_global_${userData.username.toLowerCase()}`,
+            `public_profile_${userData.username.toLowerCase()}_permanent`
+          ];
+          
+          publicKeys.forEach(key => {
+            try {
+              localStorage.setItem(key, JSON.stringify(publicProfileData));
+            } catch (e) {}
+          });
+          
+          console.log(`🌐 UNIFIED: Public profile cached for @${userData.username} (PERSISTENT!)`);
+        } catch (e) {
+          console.warn('Public profile caching failed:', e);
+        }
+      }
+      
       console.log(`☁️ UNIFIED: Firebase saved for ${userId.slice(0, 8)}`);
       return true;
     } catch (error) {
@@ -401,8 +423,11 @@ class UnifiedStorage {
     // Remove from memory
     this.memoryCache.delete(userId);
     
-    // KEEP localStorage data for quick re-login
-    console.log(`🔄 UNIFIED: Cleared memory for ${userId.slice(0, 8)}, kept localStorage`);
+    // IMPORTANT: NEVER clear public profile caches
+    // These are needed for other users to view profiles
+    console.log(`🔄 UNIFIED: Cleared session for ${userId.slice(0, 8)}`);
+    console.log(`🌐 UNIFIED: Public profiles PRESERVED (other users can still view)`);
+    console.log(`💾 UNIFIED: Personal data PRESERVED for quick re-login`);
   }
 
   // Get public profile by username
@@ -449,20 +474,62 @@ class UnifiedStorage {
   }
 
   searchLocalStorageByUsername(username) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('irtzalink_')) {
-        try {
-          const data = localStorage.getItem(key);
-          if (data) {
-            const parsed = JSON.parse(data);
-            if (parsed.username === username) {
+    // Check in browser localStorage (might not work cross-session)
+    if (typeof localStorage !== 'undefined') {
+      try {
+        // First try GLOBAL public profile caches (PERSISTENT)
+        const publicKeys = [
+          `irtzalink_public_${username.toLowerCase()}`,
+          `irtzalink_global_${username.toLowerCase()}`,
+          `public_profile_${username.toLowerCase()}_permanent`
+        ];
+        
+        for (const publicKey of publicKeys) {
+          const publicData = localStorage.getItem(publicKey);
+          if (publicData) {
+            try {
+              const parsed = JSON.parse(publicData);
+              console.log(`🌐 UNIFIED: Found @${username} in GLOBAL cache (${publicKey})`);
               return parsed;
+            } catch (e) {
+              continue;
             }
           }
-        } catch (e) {
-          continue;
         }
+        
+        // Then check all user profiles
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('irtzalink_')) {
+            try {
+              const data = localStorage.getItem(key);
+              if (data) {
+                const parsed = JSON.parse(data);
+                if (parsed.username === username) {
+                  // Cache this as GLOBAL public profile for faster future access
+                  const publicKeys = [
+                    `irtzalink_public_${username.toLowerCase()}`,
+                    `irtzalink_global_${username.toLowerCase()}`,
+                    `public_profile_${username.toLowerCase()}_permanent`
+                  ];
+                  
+                  publicKeys.forEach(pubKey => {
+                    try {
+                      localStorage.setItem(pubKey, JSON.stringify(parsed));
+                    } catch (e) {}
+                  });
+                  
+                  console.log(`🌐 UNIFIED: Cached @${username} to GLOBAL locations (PERSISTENT!)`);
+                  return parsed;
+                }
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('LocalStorage search failed:', e);
       }
     }
     return null;
