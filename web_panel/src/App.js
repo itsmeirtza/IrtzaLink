@@ -29,6 +29,7 @@ import AboutUs from './pages/AboutUs';
 import FollowTest from './pages/FollowTest';
 import FollowersPage from './pages/FollowersPage';
 import FollowingPage from './pages/FollowingPage';
+import GetVerified from './pages/GetVerified';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -237,6 +238,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard user={user} />} />
                 <Route path="/profile" element={<Profile user={user} />} />
                 <Route path="/analytics" element={<Analytics user={user} />} />
+                <Route path="/get-verified" element={<GetVerified user={user} />} />
                 <Route path="/settings" element={<Settings user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/admin" element={<Admin user={user} />} />
                 <Route path="/follow-test" element={<FollowTest user={user} />} />

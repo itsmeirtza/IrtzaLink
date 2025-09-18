@@ -3,8 +3,8 @@ import { CheckBadgeIcon, SparklesIcon, StarIcon, PhoneIcon, EnvelopeIcon, Shield
 import { motion } from 'framer-motion';
 import { AuthContext } from '../App';
 
-const GetVerified = () => {
-  const { user } = useContext(AuthContext);
+const GetVerified = ({ user }) => {
+  // Get user from props instead of context
 
   const handleWhatsAppContact = () => {
     const message = encodeURIComponent("Hi! I'm interested in getting verified badge for my IrtzaLink profile. Please provide more details about the verification process.");

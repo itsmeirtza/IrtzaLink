@@ -1,6 +1,6 @@
 import React from 'react';
 import { logout } from '../services/firebase';
-import { clearUserData } from '../services/dataStorage';
+import StorageManager from '../services/StorageManager';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -9,7 +9,8 @@ import {
   UserCircleIcon, 
   ShieldCheckIcon,
   ArrowRightOnRectangleIcon,
-  TrashIcon
+  TrashIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 
 const Settings = ({ user, darkMode, toggleDarkMode }) => {
@@ -18,9 +19,9 @@ const Settings = ({ user, darkMode, toggleDarkMode }) => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
-        // Clear ONLY session data, KEEP profile data
-        clearUserData(user.uid);
-        console.log('🔒 UNIFIED: Profile data preserved for quick re-login');
+        // Clear only memory cache - ALL DATA PRESERVED!
+        StorageManager.clearUserData(user.uid);
+        console.log('🔒 SAFE LOGOUT: User data 100% preserved in Firebase');
         
         await logout();
         toast.success('Logged out successfully!');
@@ -112,6 +113,33 @@ const Settings = ({ user, darkMode, toggleDarkMode }) => {
                 }`}
               />
             </button>
+          </div>
+        </div>
+
+        {/* Get Verified */}
+        <div className="card p-6 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+            <CheckBadgeIcon className="w-5 h-5 mr-2 text-blue-500" />
+            Verification Status
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white flex items-center">
+                  Get Verified Badge
+                  <CheckBadgeIcon className="w-4 h-4 ml-2 text-blue-500" />
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Stand out with the iconic blue checkmark - only $10/year!
+                </p>
+              </div>
+              <button 
+                onClick={() => window.location.href = '/get-verified'}
+                className="btn-primary text-sm px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+              >
+                Get Verified
+              </button>
+            </div>
           </div>
         </div>
 

@@ -14,7 +14,8 @@ import {
   XMarkIcon,
   HomeIcon,
   ChatBubbleLeftRightIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 
 const Navbar = ({ user, darkMode, toggleDarkMode, openChatManager }) => {
@@ -87,6 +88,7 @@ const Navbar = ({ user, darkMode, toggleDarkMode, openChatManager }) => {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Profile', href: '/profile', icon: UserCircleIcon },
     { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
+    { name: 'Get Verified', href: '/get-verified', icon: CheckBadgeIcon },
     { name: 'Settings', href: '/settings', icon: CogIcon },
     { name: 'Help', href: '/help', icon: QuestionMarkCircleIcon },
   ];
