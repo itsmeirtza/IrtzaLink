@@ -187,34 +187,35 @@ class FirestoreService {
     try {
       console.log('📸 STORAGE: Uploading profile picture for', userId.slice(0, 8));
 
-      // Prefer Supabase storage if configured
-      const supaUrl = process.env.REACT_APP_SUPABASE_URL;
-      const supaKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-      const bucket = process.env.REACT_APP_SUPABASE_BUCKET || 'profiles';
+      // New flow: Upload via backend API (uses Firebase Admin + Supabase Service Role)
+      const currentUser = auth.currentUser;
+      const idToken = currentUser ? await currentUser.getIdToken() : null;
+      if (!idToken) throw new Error('Not signed in');
 
-      if (supaUrl && supaKey && supaUrl !== 'https://your-project.supabase.co') {
-        // Use Supabase Storage
-        const ext = (file.name && file.name.split('.').pop()) || 'jpg';
-        const path = `users/${userId}/profile.${ext}`;
-        const { data, error } = await supabaseClient.storage.from(bucket).upload(path, file, { upsert: true, cacheControl: '3600' });
-        if (error) throw error;
-        const { data: publicUrl } = supabaseClient.storage.from(bucket).getPublicUrl(path);
-        const downloadURL = publicUrl.publicUrl;
+      const apiBase = process.env.REACT_APP_API_BASE_URL || '';
+      const url = `${apiBase}/api/upload`;
 
-        await this.updateUserData(userId, { profile_pic_url: downloadURL });
-        // Mirror to Supabase row as well
-        try { await supabaseService.saveUserData(userId, { photoURL: downloadURL }); } catch {}
+      const formData = new FormData();
+      formData.append('file', file);
 
-        console.log('✅ SUPABASE STORAGE: Profile picture uploaded');
-        return { success: true, url: downloadURL };
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Upload failed');
       }
 
-      // Fallback to Firebase Storage (if configured)
-      const storageRef = ref(storage, `users/${userId}/profile.jpg`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const result = await res.json();
+      const downloadURL = result.url;
+
       await this.updateUserData(userId, { profile_pic_url: downloadURL });
-      console.log('✅ FIREBASE STORAGE: Profile picture uploaded');
+      try { await supabaseService.saveUserData(userId, { photoURL: downloadURL }); } catch {}
+
+      console.log('✅ BACKEND STORAGE: Profile picture uploaded via API');
       return { success: true, url: downloadURL };
     } catch (error) {
       console.error('❌ STORAGE: Error uploading profile picture:', error);
