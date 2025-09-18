@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getUserAnalytics } from '../services/firebase';
+import StorageManager from '../services/StorageManager';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { EyeIcon, QrCodeIcon, CursorArrowRaysIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
@@ -19,7 +19,7 @@ const Analytics = ({ user }) => {
 
   const fetchAnalytics = async () => {
     try {
-      const result = await getUserAnalytics(user.uid, null, 50);
+      const result = await StorageManager.getUserAnalytics(user.uid, null, 50);
       if (result.success) {
         const data = result.data;
         setAnalytics(data);

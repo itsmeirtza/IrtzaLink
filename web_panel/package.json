@@ -10,7 +10,7 @@
     "@testing-library/user-event": "^13.5.0",
     "autoprefixer": "^10.4.14",
     "firebase": "^10.1.0",
-    "framer-motion": "^12.23.12",
+    "framer-motion": "^10.16.4",
     "html2canvas": "^1.4.1",
     "postcss": "^8.4.24",
     "qrcode": "^1.5.3",
@@ -27,8 +27,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "cross-env CI=false react-scripts build",
-    "vercel-build": "cross-env CI=false react-scripts build",
+    "build": "react-scripts build",
+    "vercel-build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../services/firebase';
-import { getNotificationsPermanently, saveNotificationPermanently } from '../services/permanentStorage';
+// Notifications handled by centralized storage
 import toast from 'react-hot-toast';
 import {
   BellIcon,
@@ -45,28 +45,16 @@ const NotificationCenter = ({ user, onNotificationClick }) => {
     
     setLoading(true);
     try {
-      // Always get from permanent storage first (NEVER fails)
-      const localResult = getNotificationsPermanently(user.uid);
-      
-      if (localResult.success) {
-        setNotifications(localResult.data || []);
-        const unread = (localResult.data || []).filter(n => !n.read).length;
+      // Get notifications from Firebase
+      const firebaseResult = await getUserNotifications(user.uid, 20);
+      if (firebaseResult.success && firebaseResult.data?.length > 0) {
+        console.log(`☁️ Loaded ${firebaseResult.data.length} notifications from Firebase`);
+        setNotifications(firebaseResult.data);
+        const unread = (firebaseResult.data || []).filter(n => !n.read).length;
         setUnreadCount(unread);
-        console.log(`📱 Loaded ${localResult.data?.length || 0} notifications from permanent storage, ${unread} unread`);
-      }
-      
-      // Try to get from Firebase in background to sync
-      try {
-        const firebaseResult = await getUserNotifications(user.uid, 20);
-        if (firebaseResult.success && firebaseResult.data?.length > 0) {
-          console.log(`☁️ Synced ${firebaseResult.data.length} notifications from Firebase`);
-          // Merge with local data (Firebase notifications take priority for reads/updates)
-          setNotifications(firebaseResult.data);
-          const unread = (firebaseResult.data || []).filter(n => !n.read).length;
-          setUnreadCount(unread);
-        }
-      } catch (firebaseError) {
-        console.warn('⚠️ Firebase notification sync failed (using local data):', firebaseError.message);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
       }
       
     } catch (error) {

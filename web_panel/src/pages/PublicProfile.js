@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
-import { trackQRScan } from '../services/firebase';
-import { getPublicProfile } from '../services/dataStorage';
+import { trackQRCodeScan, trackProfileVisit } from '../services/firebase';
+import StorageManager from '../services/StorageManager';
 
 const PublicProfile = () => {
   const { username } = useParams();
@@ -15,16 +15,34 @@ const PublicProfile = () => {
   useEffect(() => {
     if (username) {
       fetchProfile(username);
-      // Track if this is coming from QR scan
-      if (document.referrer === '' || navigator.userAgent.includes('QR')) {
-        trackQRCodeScan();
-      }
     }
   }, [username]);
 
+  // Track analytics after profile is loaded
+  useEffect(() => {
+    if (profile && profile.userId) {
+      // Track profile visit
+      StorageManager.trackEvent('profile_visit', profile.userId, {
+        visitorId: 'anonymous',
+        source: window.location.referrer || 'direct'
+      }).catch(err => console.error('Failed to track profile visit:', err));
+      
+      // Track QR scan if coming from QR source
+      const urlParams = new URLSearchParams(window.location.search);
+      const fromQR = urlParams.get('qr') === '1' || document.referrer === '' || navigator.userAgent.includes('QR');
+      
+      if (fromQR) {
+        StorageManager.trackEvent('qr_scan', profile.userId, {
+          source: 'qr_code',
+          referrer: document.referrer || 'direct'
+        }).catch(err => console.error('Failed to track QR scan:', err));
+      }
+    }
+  }, [profile]);
+
   const fetchProfile = async (username) => {
     try {
-      const result = await getPublicProfile(username);
+      const result = await StorageManager.getPublicProfile(username);
       
       if (result.success && result.data) {
         setProfile(result.data);
@@ -39,20 +57,6 @@ const PublicProfile = () => {
     }
   };
 
-  const trackQRCodeScan = async () => {
-    try {
-      if (profile?.userId) {
-        await trackQRScan({
-          userId: profile.userId,
-          userAgent: navigator.userAgent,
-          source: 'qr_code'
-        });
-      }
-    } catch (error) {
-      // Silent fail for analytics
-      console.error('Failed to track QR scan:', error);
-    }
-  };
 
   const handleSocialClick = (platform, url) => {
     try {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { uploadProfileImage, reserveUsernameLocal, checkUsernameAvailabilityLocal } from '../services/firebase';
-import { getUserData, saveUserData } from '../services/dataStorage';
-import { loadUserDataPermanently, updateUserDataPermanently } from '../services/permanentStorage';
+import StorageManager from '../services/StorageManager';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -78,7 +77,7 @@ const Profile = ({ user }) => {
     setLoading(true);
     
     try {
-      const result = await loadUserDataPermanently(user.uid);
+      const result = await StorageManager.getUserData(user.uid);
       console.log('Permanent storage result:', result);
       
       if (result.success && result.data) {
@@ -268,7 +267,7 @@ const Profile = ({ user }) => {
       
       if (result.success) {
         // Save immediately to unified storage
-        const updateResult = await saveUserData(user.uid, {
+        const updateResult = await StorageManager.saveUserData(user.uid, {
           photoURL: result.url,
           updatedAt: new Date()
         });
@@ -305,7 +304,7 @@ const Profile = ({ user }) => {
       const profileURL = `https://irtzalink.site/${formData.username}`;
       
       // Update user data with QR code URL (for local generation)
-      const updateResult = await saveUserData(user.uid, {
+      const updateResult = await StorageManager.saveUserData(user.uid, {
         qrCodeURL: profileURL,
         profileURL: profileURL,
         updatedAt: new Date()
@@ -387,7 +386,7 @@ const Profile = ({ user }) => {
       
       // Use UNIFIED storage - single source of truth!
       console.log('🔍 UNIFIED: Saving profile data...');
-      const unifiedResult = await saveUserData(user.uid, updateData);
+      const unifiedResult = await StorageManager.saveUserData(user.uid, updateData);
       
       if (unifiedResult.success) {
         console.log('✅ UNIFIED: Profile saved successfully!');

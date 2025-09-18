@@ -1,6 +1,9 @@
 {
   "buildCommand": "cd web_panel && npm install && CI=false npm run build",
   "outputDirectory": "web_panel/build",
+  "env": {
+    "CI": "false"
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
