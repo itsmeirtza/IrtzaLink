@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { logout } from '../services/firebase';
-import universalStorageManager from '../services/universalStorageManager';
+import indexedDBService from '../services/indexedDBService';
+import StorageManager from '../services/StorageManager';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -15,63 +16,31 @@ import {
 
 const Settings = ({ user, darkMode, toggleDarkMode }) => {
   const navigate = useNavigate();
-  const [currentStorage, setCurrentStorage] = useState('all');
-  const [storageStats, setStorageStats] = useState(null);
-  const [testingStorage, setTestingStorage] = useState(false);
+  const [storageStatus, setStorageStatus] = useState('ready');
 
   useEffect(() => {
-    // Get current storage type
-    setCurrentStorage(universalStorageManager.getStorageType());
-    
-    // Get storage stats
-    loadStorageStats();
+    checkStorageStatus();
   }, []);
 
-  const loadStorageStats = async () => {
+  const checkStorageStatus = async () => {
     try {
-      const stats = await universalStorageManager.getStorageStats();
-      setStorageStats(stats);
+      // Test IndexedDB availability
+      const testData = { test: 'connection', timestamp: Date.now() };
+      await indexedDBService.testConnection(testData);
+      setStorageStatus('ready');
     } catch (error) {
-      console.error('Failed to load storage stats:', error);
-    }
-  };
-
-  const handleStorageChange = (storageType) => {
-    const result = universalStorageManager.setStorageType(storageType);
-    if (result.success) {
-      setCurrentStorage(storageType);
-      toast.success(`Storage changed to ${storageType.toUpperCase()}`);
-      loadStorageStats();
-    } else {
-      toast.error(result.error);
-    }
-  };
-
-  const testAllStorages = async () => {
-    setTestingStorage(true);
-    try {
-      const results = await universalStorageManager.testAllStorages();
-      if (results.success) {
-        toast.success(`${results.healthyCount}/${results.totalCount} storage services are working`);
-      } else {
-        toast.error('Some storage services failed testing');
-      }
-      console.log('Storage test results:', results);
-    } catch (error) {
-      toast.error('Failed to test storage services');
-      console.error('Storage test error:', error);
-    } finally {
-      setTestingStorage(false);
+      console.error('Storage check failed:', error);
+      setStorageStatus('error');
     }
   };
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       try {
-        // USE UNIVERSAL SAFE LOGOUT - PRESERVE ALL DATA
-        universalStorageManager.safeLogout(user.uid);
-        console.log('🔒 UNIVERSAL SAFE LOGOUT: User data 100% preserved in all storage services');
-        console.log('💾 PRESERVED: Profile, bio, social links, settings - ALL SAFE IN MULTIPLE LOCATIONS!');
+        // USE SAFE LOGOUT - PRESERVE ALL DATA
+        await StorageManager.safeLogout(user.uid);
+        console.log('🔒 SAFE LOGOUT: User data 100% preserved in IndexedDB');
+        console.log('💾 PRESERVED: Profile, bio, social links, settings - ALL SAFE!');
         
         await logout();
         toast.success('Logged out successfully! Your data is preserved.');
@@ -230,119 +199,42 @@ const Settings = ({ user, darkMode, toggleDarkMode }) => {
           </div>
         </div>
 
-        {/* Storage Settings */}
+        {/* Storage Status */}
         <div className="card p-6 border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            🌟 Storage Settings (NEW!)
+            🗄️ Storage Status
           </h3>
-          <div className="space-y-6">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Choose your preferred storage method. All options are 100% FREE and guarantee no data loss!
-              </p>
-              
-              <div className="space-y-3">
-                {/* All Storage Option */}
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="storage"
-                    value="all"
-                    checked={currentStorage === 'all'}
-                    onChange={(e) => handleStorageChange(e.target.value)}
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      🛡️ All Storage Types (Recommended)
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Maximum redundancy - saves to Supabase + IndexedDB + Enhanced localStorage
-                    </p>
-                  </div>
-                </label>
-
-                {/* Supabase Option */}
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="storage"
-                    value="supabase"
-                    checked={currentStorage === 'supabase'}
-                    onChange={(e) => handleStorageChange(e.target.value)}
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      🐘 Supabase (PostgreSQL)
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      FREE cloud database - 500MB storage, better than Firebase
-                    </p>
-                  </div>
-                </label>
-
-                {/* IndexedDB Option */}
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="storage"
-                    value="indexeddb"
-                    checked={currentStorage === 'indexeddb'}
-                    onChange={(e) => handleStorageChange(e.target.value)}
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      🗄️ IndexedDB (Browser Database)
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Works offline, large capacity, built into your browser
-                    </p>
-                  </div>
-                </label>
-
-                {/* Enhanced localStorage Option */}
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="storage"
-                    value="enhanced_localstorage"
-                    checked={currentStorage === 'enhanced_localstorage'}
-                    onChange={(e) => handleStorageChange(e.target.value)}
-                    className="text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      💾 Enhanced localStorage
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      10+ backup locations, fastest access, works everywhere
-                    </p>
-                  </div>
-                </label>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  IndexedDB Storage
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Secure browser database - works offline, unlimited capacity
+                </p>
               </div>
-              
-              {/* Test Storage Button */}
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={testAllStorages}
-                  disabled={testingStorage}
-                  className="btn-secondary text-sm flex items-center space-x-2"
-                >
-                  {testingStorage ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                      <span>Testing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>🧪</span>
-                      <span>Test All Storage Services</span>
-                    </>
-                  )}
-                </button>
+              <span className={`text-sm font-medium ${
+                storageStatus === 'ready' 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {storageStatus === 'ready' ? '✅ Active' : '❌ Error'}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  Data Preservation
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Your profile data is automatically saved and never deleted on logout
+                </p>
               </div>
+              <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                🛡️ Protected
+              </span>
             </div>
           </div>
         </div>

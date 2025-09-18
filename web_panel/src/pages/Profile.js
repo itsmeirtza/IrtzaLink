@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { uploadProfileImage, reserveUsernameLocal, checkUsernameAvailabilityLocal } from '../services/firebase';
-import universalStorageManager from '../services/universalStorageManager';
+import indexedDBService from '../services/indexedDBService';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -77,7 +77,7 @@ const Profile = ({ user }) => {
     setLoading(true);
     
     try {
-      const result = await universalStorageManager.getUserData(user.uid);
+      const result = await indexedDBService.getUserData(user.uid);
       console.log('Permanent storage result:', result);
       
       if (result.success && result.data) {
@@ -266,8 +266,8 @@ const Profile = ({ user }) => {
       const result = await uploadProfileImage(user.uid, file);
       
       if (result.success) {
-        // Save immediately to universal storage
-        const updateResult = await universalStorageManager.saveUserData(user.uid, {
+        // Save immediately to IndexedDB
+        const updateResult = await indexedDBService.saveUserData(user.uid, {
           photoURL: result.url,
           updatedAt: new Date()
         });
@@ -303,8 +303,8 @@ const Profile = ({ user }) => {
     try {
       const profileURL = `https://irtzalink.site/${formData.username}`;
       
-      // Update user data with QR code URL (using universal storage)
-      const updateResult = await universalStorageManager.saveUserData(user.uid, {
+      // Update user data with QR code URL (using IndexedDB)
+      const updateResult = await indexedDBService.saveUserData(user.uid, {
         qrCodeURL: profileURL,
         profileURL: profileURL,
         updatedAt: new Date()
@@ -384,9 +384,9 @@ const Profile = ({ user }) => {
         hasSocialLinks: Object.keys(updateData.socialLinks || {}).length > 0
       });
       
-      // Use UNIVERSAL storage - multiple free alternatives!
-      console.log('🔍 UNIVERSAL: Saving profile data with maximum redundancy...');
-      const unifiedResult = await universalStorageManager.saveUserData(user.uid, updateData);
+      // Use IndexedDB storage - best free option!
+      console.log('🔍 INDEXEDDB: Saving profile data safely...');
+      const unifiedResult = await indexedDBService.saveUserData(user.uid, updateData);
       
       if (unifiedResult.success) {
         console.log('✅ UNIFIED: Profile saved successfully!');
