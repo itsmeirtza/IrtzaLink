@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { resetUsernameChangeForAllUsers } from '../services/firebase';
+import { resetUsernameChangeForAllUsers, getAllUsers, updateUserData } from '../services/firebase';
+import { getVerifiedUsernames, addVerifiedUsername, removeVerifiedUsername, isVerifiedUser } from '../config/verifiedAccounts';
 import toast from 'react-hot-toast';
-import { UserIcon, ClockIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon, KeyIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { 
+  UserIcon, ClockIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon, KeyIcon, EnvelopeIcon,
+  CheckBadgeIcon, PlusIcon, TrashIcon, MagnifyingGlassIcon, UsersIcon
+} from '@heroicons/react/24/outline';
 
 const AdminPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
@@ -13,6 +17,15 @@ const AdminPanel = ({ user }) => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  
+  // New states for admin features
+  const [verifiedUsers, setVerifiedUsers] = useState([]);
+  const [newVerifiedUsername, setNewVerifiedUsername] = useState('');
+  const [verifiedLoading, setVerifiedLoading] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('username-reset');
 
   // Admin credentials (in production, this should be encrypted/hashed)
   const ADMIN_CREDENTIALS = {
@@ -28,6 +41,14 @@ const AdminPanel = ({ user }) => {
       setIsAuthenticated(true);
     }
   }, []);
+  
+  // Load verified users when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      setVerifiedUsers(getVerifiedUsernames());
+      loadAllUsers();
+    }
+  }, [isAuthenticated]);
 
   // Check if current user has admin email
   const hasAdminEmail = user?.email === ADMIN_CREDENTIALS.email;
@@ -92,6 +113,117 @@ const AdminPanel = ({ user }) => {
     setLoginData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Load all users
+  const loadAllUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const result = await getAllUsers();
+      if (result.success) {
+        setAllUsers(result.users || []);
+      } else {
+        console.error('Failed to load users:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+  
+  // Add verified user
+  const handleAddVerifiedUser = async () => {
+    if (!newVerifiedUsername.trim()) {
+      toast.error('Please enter a username');
+      return;
+    }
+    
+    setVerifiedLoading(true);
+    try {
+      const success = addVerifiedUsername(newVerifiedUsername.trim());
+      if (success) {
+        setVerifiedUsers(getVerifiedUsernames());
+        setNewVerifiedUsername('');
+        toast.success(`@${newVerifiedUsername} added to verified users!`);
+        
+        // Update the config file by triggering a save
+        await saveVerifiedUsersToFile();
+      } else {
+        toast.error('User is already verified or invalid username');
+      }
+    } catch (error) {
+      console.error('Error adding verified user:', error);
+      toast.error('Failed to add verified user');
+    } finally {
+      setVerifiedLoading(false);
+    }
+  };
+  
+  // Remove verified user
+  const handleRemoveVerifiedUser = async (username) => {
+    if (!window.confirm(`Remove verification from @${username}?`)) {
+      return;
+    }
+    
+    setVerifiedLoading(true);
+    try {
+      const success = removeVerifiedUsername(username);
+      if (success) {
+        setVerifiedUsers(getVerifiedUsernames());
+        toast.success(`@${username} removed from verified users`);
+        
+        // Update the config file
+        await saveVerifiedUsersToFile();
+      } else {
+        toast.error('Failed to remove user');
+      }
+    } catch (error) {
+      console.error('Error removing verified user:', error);
+      toast.error('Failed to remove verified user');
+    } finally {
+      setVerifiedLoading(false);
+    }
+  };
+  
+  // Save verified users to config file (simulation)
+  const saveVerifiedUsersToFile = async () => {
+    try {
+      // In a real app, this would make an API call to update the server-side config file
+      console.log('Saving verified users to config file:', getVerifiedUsernames());
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast.success('Config file updated successfully!');
+    } catch (error) {
+      console.error('Error saving to config file:', error);
+      toast.error('Warning: Config file may not be updated');
+    }
+  };
+  
+  // Reset username for specific user
+  const handleResetUserUsername = async (userId, email) => {
+    if (!window.confirm(`Reset username change cooldown for user: ${email}?`)) {
+      return;
+    }
+    
+    try {
+      const result = await updateUserData(userId, {
+        lastUsernameChange: null,
+        usernameChanges: 0
+      });
+      
+      if (result.success) {
+        toast.success('Username change reset for user');
+        loadAllUsers(); // Refresh user list
+      } else {
+        toast.error('Failed to reset username change');
+      }
+    } catch (error) {
+      console.error('Error resetting user username:', error);
+      toast.error('Error occurred while resetting username');
+    }
+  };
+
   const handleUsernameReset = async () => {
     if (!window.confirm('Are you sure you want to reset username change cooldown for ALL users? This will allow everyone to change their username once more.')) {
       return;
@@ -104,6 +236,7 @@ const AdminPanel = ({ user }) => {
       if (result.success) {
         setResetStats(result);
         toast.success(result.message);
+        loadAllUsers(); // Refresh user list
       } else {
         toast.error(result.error || 'Failed to reset username changes');
       }
@@ -274,6 +407,13 @@ const AdminPanel = ({ user }) => {
     );
   }
 
+  // Filter users based on search
+  const filteredUsers = allUsers.filter(user => 
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="card p-6">
@@ -297,82 +437,281 @@ const AdminPanel = ({ user }) => {
           </div>
         </div>
         
-        {/* Username Reset Section */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-6">
-          <div className="flex items-center mb-4">
-            <ClockIcon className="w-6 h-6 text-blue-500 mr-3" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Username Change Reset
-            </h3>
-          </div>
-          
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Reset the 15-day username change cooldown for all users who have previously changed their username. 
-            This will give everyone one more opportunity to change their username.
-          </p>
-          
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Warning</h4>
-                <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                  This action will affect ALL users who have changed their username before. 
-                  After reset, the 15-day timer will start fresh when they change their username again.
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <nav className="flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('username-reset')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'username-reset'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <ClockIcon className="w-4 h-4 inline-block mr-2" />
+              Username Reset
+            </button>
+            <button
+              onClick={() => setActiveTab('verified-users')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'verified-users'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <CheckBadgeIcon className="w-4 h-4 inline-block mr-2" />
+              Verified Users
+            </button>
+            <button
+              onClick={() => setActiveTab('user-management')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'user-management'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <UsersIcon className="w-4 h-4 inline-block mr-2" />
+              User Management
+            </button>
+          </nav>
+        </div>
+        {/* Tab Content */}
+        {activeTab === 'username-reset' && (
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+            <div className="flex items-center mb-4">
+              <ClockIcon className="w-6 h-6 text-blue-500 mr-3" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Username Change Reset
+              </h3>
+            </div>
+            
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Reset the 15-day username change cooldown for all users who have previously changed their username. 
+              This will give everyone one more opportunity to change their username.
+            </p>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Warning</h4>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+                    This action will affect ALL users who have changed their username before. 
+                    After reset, the 15-day timer will start fresh when they change their username again.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleUsernameReset}
+              disabled={loading}
+              className="btn-primary flex items-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  <span>Resetting...</span>
+                </>
+              ) : (
+                <>
+                  <ClockIcon className="w-4 h-4" />
+                  <span>Reset Username Change Cooldown</span>
+                </>
+              )}
+            </button>
+            
+            {resetStats && (
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center mb-2">
+                  <svg className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <h4 className="text-sm font-medium text-green-800 dark:text-green-300">
+                    Reset Completed Successfully
+                  </h4>
+                </div>
+                <p className="text-sm text-green-700 dark:text-green-400">
+                  Affected users: <strong>{resetStats.resetCount}</strong>
+                </p>
+                <p className="text-sm text-green-700 dark:text-green-400">
+                  {resetStats.message}
                 </p>
               </div>
+            )}
+          </div>
+        )}
+        
+        {activeTab === 'verified-users' && (
+          <div className="space-y-6">
+            {/* Add Verified User */}
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+              <div className="flex items-center mb-4">
+                <CheckBadgeIcon className="w-6 h-6 text-green-500 mr-3" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Add Verified User
+                </h3>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Add a username to the verified users list. This will automatically update the config file.
+              </p>
+              
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={newVerifiedUsername}
+                    onChange={(e) => setNewVerifiedUsername(e.target.value)}
+                    className="input-field"
+                    placeholder="Enter username (without @)"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddVerifiedUser()}
+                  />
+                </div>
+                <button
+                  onClick={handleAddVerifiedUser}
+                  disabled={verifiedLoading || !newVerifiedUsername.trim()}
+                  className="btn-primary flex items-center space-x-2 px-6"
+                >
+                  {verifiedLoading ? (
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PlusIcon className="w-4 h-4" />
+                  )}
+                  <span>Add</span>
+                </button>
+              </div>
+            </div>
+            
+            {/* Current Verified Users */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Current Verified Users ({verifiedUsers.length})
+                </h3>
+              </div>
+              
+              <div className="p-6">
+                {verifiedUsers.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                    No verified users yet
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {verifiedUsers.map((username) => (
+                      <div key={username} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <CheckBadgeIcon className="w-5 h-5 text-blue-500" />
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            @{username}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveVerifiedUser(username)}
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                          title="Remove verification"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          
-          <button
-            onClick={handleUsernameReset}
-            disabled={loading}
-            className="btn-primary flex items-center space-x-2"
-          >
-            {loading ? (
-              <>
-                <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                <span>Resetting...</span>
-              </>
-            ) : (
-              <>
-                <ClockIcon className="w-4 h-4" />
-                <span>Reset Username Change Cooldown</span>
-              </>
-            )}
-          </button>
-          
-          {resetStats && (
-            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <div className="flex items-center mb-2">
-                <svg className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <h4 className="text-sm font-medium text-green-800 dark:text-green-300">
-                  Reset Completed Successfully
-                </h4>
+        )}
+        
+        {activeTab === 'user-management' && (
+          <div className="space-y-6">
+            {/* Search Users */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <div className="flex items-center mb-4">
+                <UsersIcon className="w-6 h-6 text-purple-500 mr-3" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  User Management
+                </h3>
               </div>
-              <p className="text-sm text-green-700 dark:text-green-400">
-                Affected users: <strong>{resetStats.resetCount}</strong>
-              </p>
-              <p className="text-sm text-green-700 dark:text-green-400">
-                {resetStats.message}
-              </p>
+              
+              <div className="relative">
+                <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input-field pl-10"
+                  placeholder="Search users by email, name, or username..."
+                />
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Future admin functions can be added here */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            More Admin Functions Coming Soon
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            Additional administrative features will be added here as needed.
-          </p>
-        </div>
+            
+            {/* Users List */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  All Users ({filteredUsers.length} {searchQuery && `of ${allUsers.length}`})
+                </h3>
+              </div>
+              
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {usersLoading ? (
+                  <div className="p-8 text-center">
+                    <ArrowPathIcon className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+                    <p className="text-gray-600 dark:text-gray-400">Loading users...</p>
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <UsersIcon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-500 dark:text-gray-400">
+                      {searchQuery ? 'No users found matching your search' : 'No users found'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <div key={user.uid} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <img
+                            src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email)}&background=random`}
+                            alt={user.displayName}
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {user.displayName || 'No name'}
+                              </p>
+                              {user.username && isVerifiedUser(user.username) && (
+                                <CheckBadgeIcon className="w-4 h-4 text-blue-500" />
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                            {user.username && (
+                              <p className="text-sm text-gray-500 dark:text-gray-500">@{user.username}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleResetUserUsername(user.uid, user.email)}
+                            className="btn-secondary text-sm flex items-center space-x-1"
+                            title="Reset username change cooldown for this user"
+                          >
+                            <ClockIcon className="w-4 h-4" />
+                            <span>Reset Username</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

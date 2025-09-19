@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { auth, onAuthStateChanged } from './services/firebase';
 import supabaseService from './services/supabaseService';
+import localStorageFix from './services/localStorageFix';
 
 // Components
 import Navbar from './components/Navbar';
@@ -79,15 +80,35 @@ function App() {
         try {
           console.log('🔥 FIREBASE AUTH: User signed in, loading data from Supabase...', firebaseUser.uid);
           
-          // Initialize user data with Supabase service
-          const initResult = await supabaseService.initializeUser(firebaseUser.uid, {
-            displayName: firebaseUser.displayName,
-            email: firebaseUser.email,
-            photoURL: firebaseUser.photoURL
-          });
+          // Try Supabase first, fallback to LocalStorage
+          let initResult;
+          try {
+            initResult = await supabaseService.initializeUser(firebaseUser.uid, {
+              displayName: firebaseUser.displayName,
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL
+            });
+          } catch (error) {
+            console.log('⚠️ SUPABASE: Failed, using LocalStorage fix');
+            initResult = localStorageFix.initializeUser(firebaseUser.uid, {
+              displayName: firebaseUser.displayName,
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL
+            });
+          }
+          
+          // If Supabase fails, try LocalStorage fix
+          if (!initResult.success) {
+            console.log('🔧 FALLBACK: Using LocalStorage fix');
+            initResult = localStorageFix.initializeUser(firebaseUser.uid, {
+              displayName: firebaseUser.displayName,
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL
+            });
+          }
           
           if (initResult.success) {
-            // User data already loaded by initializeUser
+            // User data loaded successfully
             const userData = initResult.data;
             
             const enhancedUser = {
@@ -97,10 +118,11 @@ function App() {
               photoURL: userData.photoURL || firebaseUser.photoURL,
               emailVerified: firebaseUser.emailVerified,
               userData: userData,
-              dataSource: 'supabase'
+              dataSource: initResult.data.uid ? 'localStorage' : 'supabase'
             };
             
-            console.log('✅ SUPABASE: User data loaded successfully:', {
+            console.log('✅ DATA: User data loaded successfully:', {
+              source: enhancedUser.dataSource,
               display_name: userData.displayName,
               username: userData.username,
               hasProfilePic: !!userData.photoURL,
@@ -111,9 +133,9 @@ function App() {
             setUser(enhancedUser);
               
           } else {
-            console.error('❌ SUPABASE: Failed to initialize user:', initResult.error);
+            console.error('❌ ALL SOURCES FAILED:', initResult.error);
             
-            // Create basic user object as fallback
+            // Create basic user object as final fallback
             const basicUser = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -121,7 +143,7 @@ function App() {
               photoURL: firebaseUser.photoURL,
               emailVerified: firebaseUser.emailVerified,
               userData: null,
-              dataSource: 'supabase_error'
+              dataSource: 'firebase_only'
             };
             
             setUser(basicUser);
@@ -146,17 +168,21 @@ function App() {
       } else {
         console.log('🚺 FIREBASE AUTH: User signed out - Data safely stored in Supabase');
         
-        // Perform safe logout (data remains in Supabase)
+        // Perform safe logout (data remains preserved)
         if (user && user.uid) {
-          supabaseService.safeLogout(user.uid);
+          if (user.dataSource === 'localStorage') {
+            localStorageFix.safeLogout(user.uid);
+          } else {
+            supabaseService.safeLogout(user.uid);
+          }
         }
         
         setUser(null);
         
-        // Data persists in Supabase - NO DATA LOSS!
-        console.log('✅ SUPABASE: All data preserved in cloud database');
-        console.log('💾 SUPABASE: Profile, links, pics - ALL SAFE in Supabase!');
-        console.log('🔄 SUPABASE: Next login will restore everything instantly!');
+        // Data persists like username - NO DATA LOSS!
+        console.log('✅ DATA PRESERVED: All data kept safe (like username)');
+        console.log('💾 PERSISTENCE: Profile, links, pics - ALL SAFE!');
+        console.log('🔄 RESTORE: Next login will restore everything instantly!');
       }
       setLoading(false);
     });
