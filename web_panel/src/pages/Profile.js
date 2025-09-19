@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import localStorageFix from '../services/localStorageFix';
 import supabaseService from '../services/supabaseService';
 import { socialPlatforms } from '../utils/socialIcons';
+import { testLocalStorage, debugUserData } from '../utils/storageTest';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -81,6 +82,11 @@ const Profile = ({ user }) => {
 
   const loadUserData = async () => {
     try {
+      // Run storage tests first
+      console.log('🔍 PROFILE: Starting comprehensive data loading...');
+      testLocalStorage();
+      debugUserData(user.uid);
+      
       console.log('🔍 PROFILE: Loading user data with fallback system');
       let result;
       
@@ -146,13 +152,9 @@ const Profile = ({ user }) => {
 
   const loadUserLinks = async () => {
     try {
-      console.log('🔗 PROFILE: Loading user links');
-      const result = await supabaseService.getUserLinks(user.uid);
-      
-      if (result.success) {
-        setLinks(result.data);
-        console.log('✅ PROFILE: Found', result.data.length, 'links');
-      }
+      console.log('🔗 PROFILE: Loading user links (placeholder)');
+      // For now, links functionality is disabled
+      setLinks([]);
     } catch (error) {
       console.error('❌ PROFILE: Error loading links:', error);
     }
@@ -228,6 +230,8 @@ const Profile = ({ user }) => {
       }
 
       console.log('💾 PROFILE: Saving user data with fallback system');
+      console.log('💾 PROFILE: Current form data:', formData);
+      console.log('💾 PROFILE: User info:', { uid: user.uid, email: user.email });
       
       // Prepare data in the format expected by storage services
       const profileData = {
@@ -246,8 +250,13 @@ const Profile = ({ user }) => {
       let result;
       
       // Always save to LocalStorage first (for immediate persistence)
+      console.log('💾 PROFILE: About to save to LocalStorage:', profileData);
       const localResult = localStorageFix.updateUserData(user.uid, profileData);
-      console.log('💾 PROFILE: Data saved to LocalStorage:', localResult.success);
+      console.log('💾 PROFILE: LocalStorage save result:', localResult);
+      
+      // Debug: Check if data was actually saved
+      const verifyResult = localStorageFix.loadUserData(user.uid);
+      console.log('💾 PROFILE: Verification - data in LocalStorage:', verifyResult);
       
       // Try to save to Supabase as backup
       try {
