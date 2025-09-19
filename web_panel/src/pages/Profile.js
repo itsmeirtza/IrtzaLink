@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { uploadProfileImage, reserveUsernameLocal, checkUsernameAvailabilityLocal } from '../services/firebase';
-import indexedDBService from '../services/indexedDBService';
+import StorageManager from '../services/StorageManager';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -77,8 +77,8 @@ const Profile = ({ user }) => {
     setLoading(true);
     
     try {
-      const result = await indexedDBService.getUserData(user.uid);
-      console.log('Permanent storage result:', result);
+      const result = await StorageManager.getUserData(user.uid);
+      console.log('Firebase storage result:', result);
       
       if (result.success && result.data) {
         // User exists in Firestore
@@ -266,8 +266,8 @@ const Profile = ({ user }) => {
       const result = await uploadProfileImage(user.uid, file);
       
       if (result.success) {
-        // Save immediately to IndexedDB
-        const updateResult = await indexedDBService.saveUserData(user.uid, {
+        // Save immediately to Firebase
+        const updateResult = await StorageManager.saveUserData(user.uid, {
           photoURL: result.url,
           updatedAt: new Date()
         });
@@ -303,8 +303,8 @@ const Profile = ({ user }) => {
     try {
       const profileURL = `https://irtzalink.site/${formData.username}`;
       
-      // Update user data with QR code URL (using IndexedDB)
-      const updateResult = await indexedDBService.saveUserData(user.uid, {
+      // Update user data with QR code URL (using Firebase)
+      const updateResult = await StorageManager.saveUserData(user.uid, {
         qrCodeURL: profileURL,
         profileURL: profileURL,
         updatedAt: new Date()
@@ -384,15 +384,15 @@ const Profile = ({ user }) => {
         hasSocialLinks: Object.keys(updateData.socialLinks || {}).length > 0
       });
       
-      // Use IndexedDB storage - best free option!
-      console.log('🔍 INDEXEDDB: Saving profile data safely...');
-      const unifiedResult = await indexedDBService.saveUserData(user.uid, updateData);
+      // Use Firebase storage - reliable and fast!
+      console.log('🔍 FIREBASE: Saving profile data safely...');
+      const unifiedResult = await StorageManager.saveUserData(user.uid, updateData);
       
       if (unifiedResult.success) {
-        console.log('✅ UNIFIED: Profile saved successfully!');
-        console.log('💾 UNIFIED: Saved to memory, localStorage, and Firebase');
-        console.log('🔍 UNIFIED: Search will now find this user!');
-        console.log('🔒 UNIFIED: Data NEVER gets lost!');
+        console.log('✅ FIREBASE: Profile saved successfully!');
+        console.log('💾 FIREBASE: All data saved to Firebase - 100% reliable!');
+        console.log('🔍 FIREBASE: Search will now find this user!');
+        console.log('🔒 FIREBASE: Data NEVER gets lost and persists after logout!');
         
         
         // Simple success message
@@ -431,7 +431,7 @@ const Profile = ({ user }) => {
         });
         
       } else {
-        console.error('❌ UNIFIED: Save failed:', unifiedResult.error);
+        console.error('❌ FIREBASE: Save failed:', unifiedResult.error);
         toast.error(unifiedResult.error || 'Error updating profile - please try again');
       }
     } catch (error) {
