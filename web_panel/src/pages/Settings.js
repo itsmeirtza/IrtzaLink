@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { logout } from '../services/firebase';
-import indexedDBService from '../services/indexedDBService';
 import StorageManager from '../services/StorageManager';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -16,23 +15,6 @@ import {
 
 const Settings = ({ user, darkMode, toggleDarkMode }) => {
   const navigate = useNavigate();
-  const [storageStatus, setStorageStatus] = useState('ready');
-
-  useEffect(() => {
-    checkStorageStatus();
-  }, []);
-
-  const checkStorageStatus = async () => {
-    try {
-      // Test IndexedDB availability
-      const testData = { test: 'connection', timestamp: Date.now() };
-      await indexedDBService.testConnection(testData);
-      setStorageStatus('ready');
-    } catch (error) {
-      console.error('Storage check failed:', error);
-      setStorageStatus('error');
-    }
-  };
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -199,45 +181,6 @@ const Settings = ({ user, darkMode, toggleDarkMode }) => {
           </div>
         </div>
 
-        {/* Storage Status */}
-        <div className="card p-6 border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            🗄️ Storage Status
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  IndexedDB Storage
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Secure browser database - works offline, unlimited capacity
-                </p>
-              </div>
-              <span className={`text-sm font-medium ${
-                storageStatus === 'ready' 
-                  ? 'text-green-600 dark:text-green-400' 
-                  : 'text-red-600 dark:text-red-400'
-              }`}>
-                {storageStatus === 'ready' ? '✅ Active' : '❌ Error'}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  Data Preservation
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your profile data is automatically saved and never deleted on logout
-                </p>
-              </div>
-              <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                🛡️ Protected
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Privacy & Data */}
         <div className="card p-6">

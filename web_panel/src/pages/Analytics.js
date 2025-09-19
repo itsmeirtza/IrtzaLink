@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import StorageManager from '../services/StorageManager';
+import { getUserAnalytics } from '../services/firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { EyeIcon, QrCodeIcon, CursorArrowRaysIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
@@ -19,33 +19,89 @@ const Analytics = ({ user }) => {
 
   const fetchAnalytics = async () => {
     try {
-      const result = await StorageManager.getUserAnalytics(user.uid, null, 50);
+      console.log('📊 ANALYTICS: Fetching data for user:', user.uid);
+      
+      const result = await getUserAnalytics(user.uid, null, 100);
       if (result.success) {
-        const data = result.data;
+        const data = result.data || [];
+        console.log('📊 ANALYTICS: Retrieved', data.length, 'events');
+        
         setAnalytics(data);
         
-        // Calculate stats
+        // Calculate stats with better filtering
         const today = new Date().toDateString();
-        const totalViews = data.filter(item => item.type === 'profile_visit').length;
-        const totalScans = data.filter(item => item.type === 'qr_scan').length;
-        const todayViews = data.filter(item => 
-          item.type === 'profile_visit' && 
-          item.timestamp?.toDate?.()?.toDateString() === today
+        
+        const totalViews = data.filter(item => 
+          item.type === 'profile_visit' || item.type === 'profile_view'
         ).length;
-        const todayScans = data.filter(item => 
-          item.type === 'qr_scan' && 
-          item.timestamp?.toDate?.()?.toDateString() === today
+        
+        const totalScans = data.filter(item => 
+          item.type === 'qr_scan' || item.type === 'qr_code_scan'
         ).length;
+        
+        const todayViews = data.filter(item => {
+          const isVisit = item.type === 'profile_visit' || item.type === 'profile_view';
+          let itemDate = today; // fallback to today if no timestamp
+          
+          try {
+            if (item.timestamp?.toDate) {
+              itemDate = item.timestamp.toDate().toDateString();
+            } else if (item.timestamp) {
+              itemDate = new Date(item.timestamp).toDateString();
+            }
+          } catch (error) {
+            console.warn('Could not parse timestamp:', item.timestamp);
+          }
+          
+          return isVisit && itemDate === today;
+        }).length;
+        
+        const todayScans = data.filter(item => {
+          const isScan = item.type === 'qr_scan' || item.type === 'qr_code_scan';
+          let itemDate = today; // fallback to today if no timestamp
+          
+          try {
+            if (item.timestamp?.toDate) {
+              itemDate = item.timestamp.toDate().toDateString();
+            } else if (item.timestamp) {
+              itemDate = new Date(item.timestamp).toDateString();
+            }
+          } catch (error) {
+            console.warn('Could not parse timestamp:', item.timestamp);
+          }
+          
+          return isScan && itemDate === today;
+        }).length;
 
-        setStats({
+        const statsData = {
           totalViews,
           totalScans,
           todayViews,
           todayScans
+        };
+        
+        console.log('📊 ANALYTICS: Calculated stats:', statsData);
+        setStats(statsData);
+        
+      } else {
+        console.log('📊 ANALYTICS: No data found or error:', result.error);
+        // Set demo data if no analytics exist yet
+        setStats({
+          totalViews: 0,
+          totalScans: 0,
+          todayViews: 0,
+          todayScans: 0
         });
       }
     } catch (error) {
-      console.error('Error fetching analytics:', error);
+      console.error('❌ ANALYTICS: Error fetching analytics:', error);
+      // Set default stats on error
+      setStats({
+        totalViews: 0,
+        totalScans: 0,
+        todayViews: 0,
+        todayScans: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -137,11 +193,11 @@ const Analytics = ({ user }) => {
               <div key={index} className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                 <div className="flex items-center space-x-4">
                   <div className={`w-3 h-3 rounded-full ${
-                    activity.type === 'profile_visit' ? 'bg-blue-500' : 'bg-green-500'
+                    activity.type === 'profile_visit' || activity.type === 'profile_view' ? 'bg-blue-500' : 'bg-green-500'
                   }`} />
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {activity.type === 'profile_visit' ? 'Profile Visit' : 'QR Code Scan'}
+                      {activity.type === 'profile_visit' || activity.type === 'profile_view' ? 'Profile Visit' : 'QR Code Scan'}
                     </p>
                     {activity.userAgent && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">

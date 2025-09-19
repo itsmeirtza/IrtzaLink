@@ -256,38 +256,70 @@ const Profile = ({ user }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast.error('Image size should be less than 5MB');
+    console.log('🖼️ PROFILE: Starting image upload process...');
+    
+    // Enhanced file validation
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please select a valid image file (JPG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit (increased)
+      toast.error('Image size should be less than 10MB');
       return;
     }
 
     try {
       setSaving(true);
+      toast.loading('Uploading image...', { id: 'upload-toast' });
+      
+      console.log('🖼️ PROFILE: Uploading to Firebase Storage...');
       const result = await uploadProfileImage(user.uid, file);
       
       if (result.success) {
-        // Save immediately to Firebase
-        const updateResult = await StorageManager.saveUserData(user.uid, {
+        console.log('✅ PROFILE: Image uploaded successfully, saving to database...');
+        toast.loading('Saving profile image...', { id: 'upload-toast' });
+        
+        // Save immediately to Firebase with additional metadata
+        const updateData = {
           photoURL: result.url,
-          updatedAt: new Date()
-        });
+          updatedAt: new Date(),
+          photoMetadata: {
+            fileName: result.fileName,
+            fileSize: result.fileSize,
+            uploadedAt: new Date(),
+            originalName: file.name
+          }
+        };
+        
+        const updateResult = await StorageManager.saveUserData(user.uid, updateData);
         
         if (updateResult.success) {
-          // Update form data after successful database save
+          // Update form data immediately
           setFormData(prev => ({ ...prev, photoURL: result.url }));
-          toast.success('Profile image updated!');
           
-          // Refresh user data to ensure consistency
-          await fetchUserData();
+          // Also update userData state
+          setUserData(prev => ({ ...prev, photoURL: result.url }));
+          
+          toast.success('Profile image updated successfully!', { id: 'upload-toast' });
+          console.log('✅ PROFILE: Profile image saved to database successfully');
+          
+          // Optional: Refresh user data in background for consistency
+          fetchUserData().catch(err => {
+            console.warn('⚠️ PROFILE: Background refresh failed (image is still saved):', err);
+          });
         } else {
-          toast.error('Error saving profile image to database');
+          console.error('❌ PROFILE: Failed to save image URL to database:', updateResult.error);
+          toast.error('Error saving profile image. Please try again.', { id: 'upload-toast' });
         }
       } else {
-        toast.error(result.error || 'Error uploading image');
+        console.error('❌ PROFILE: Image upload failed:', result.error);
+        toast.error(result.error || 'Error uploading image', { id: 'upload-toast' });
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Error uploading image');
+      console.error('❌ PROFILE: Unexpected error during image upload:', error);
+      toast.error('Unexpected error uploading image. Please try again.', { id: 'upload-toast' });
     } finally {
       setSaving(false);
     }

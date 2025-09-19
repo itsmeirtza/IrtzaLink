@@ -620,17 +620,70 @@ export const checkUsernameAvailability = httpsCallable(functions, 'checkUsername
 export const reserveUsername = httpsCallable(functions, 'reserveUsername');
 export const trackQRScan = httpsCallable(functions, 'trackQRScan');
 
-// Storage helpers
+// Storage helpers - Enhanced profile image upload
 export const uploadProfileImage = async (userId, file) => {
   try {
-    const storageRef = ref(storage, `profile_pictures/${userId}/${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log(`🖼️ UPLOAD: Starting profile image upload for user ${userId.slice(0, 8)}`);
+    console.log(`🖼️ FILE: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB, Type: ${file.type}`);
     
-    return { success: true, url: downloadURL };
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      return { success: false, error: 'Please select a valid image file' };
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      return { success: false, error: 'Image size must be less than 10MB' };
+    }
+    
+    // Create unique filename with timestamp
+    const timestamp = Date.now();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `profile_${timestamp}.${fileExtension}`;
+    
+    console.log(`🖼️ STORAGE: Uploading to Firebase Storage...`);
+    const storageRef = ref(storage, `profile_pictures/${userId}/${fileName}`);
+    
+    // Upload with metadata
+    const metadata = {
+      contentType: file.type,
+      customMetadata: {
+        'uploadedBy': userId,
+        'uploadedAt': timestamp.toString(),
+        'originalName': file.name
+      }
+    };
+    
+    const snapshot = await uploadBytes(storageRef, file, metadata);
+    console.log(`✅ UPLOAD: Image uploaded successfully to Firebase Storage`);
+    
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log(`✅ UPLOAD: Download URL generated:`, downloadURL.substring(0, 100) + '...');
+    
+    return { 
+      success: true, 
+      url: downloadURL,
+      fileName,
+      fileSize: file.size,
+      timestamp
+    };
+    
   } catch (error) {
-    console.error('Error uploading image:', error);
-    return { success: false, error: error.message };
+    console.error('❌ UPLOAD: Error uploading image:', error);
+    
+    // Provide user-friendly error messages
+    let userMessage = 'Failed to upload image. Please try again.';
+    
+    if (error.code === 'storage/unauthorized') {
+      userMessage = 'You do not have permission to upload images. Please sign in again.';
+    } else if (error.code === 'storage/quota-exceeded') {
+      userMessage = 'Storage quota exceeded. Please contact support.';
+    } else if (error.code === 'storage/invalid-format') {
+      userMessage = 'Invalid image format. Please use JPG, PNG, or GIF.';
+    } else if (error.message?.includes('network')) {
+      userMessage = 'Network error. Please check your connection and try again.';
+    }
+    
+    return { success: false, error: userMessage, originalError: error.message };
   }
 };
 
