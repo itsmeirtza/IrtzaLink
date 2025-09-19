@@ -626,13 +626,20 @@ export const uploadProfileImage = async (userId, file) => {
     console.log(`🖼️ UPLOAD: Starting profile image upload for user ${userId.slice(0, 8)}`);
     console.log(`🖼️ FILE: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB, Type: ${file.type}`);
     
-    // Validate file
-    if (!file.type.startsWith('image/')) {
-      return { success: false, error: 'Please select a valid image file' };
+    // Enhanced file validation
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      return { success: false, error: 'Please select a valid image file (JPG, PNG, GIF, or WebP)' };
     }
     
     if (file.size > 10 * 1024 * 1024) { // 10MB limit
       return { success: false, error: 'Image size must be less than 10MB' };
+    }
+    
+    // Check if Firebase Storage is properly initialized
+    if (!storage) {
+      console.error('❌ UPLOAD: Firebase Storage not initialized');
+      return { success: false, error: 'Storage service not available. Please try again.' };
     }
     
     // Create unique filename with timestamp
@@ -653,11 +660,19 @@ export const uploadProfileImage = async (userId, file) => {
       }
     };
     
+    console.log(`🖼️ UPLOAD: Starting upload to path: profile_pictures/${userId}/${fileName}`);
+    
     const snapshot = await uploadBytes(storageRef, file, metadata);
     console.log(`✅ UPLOAD: Image uploaded successfully to Firebase Storage`);
     
     const downloadURL = await getDownloadURL(snapshot.ref);
     console.log(`✅ UPLOAD: Download URL generated:`, downloadURL.substring(0, 100) + '...');
+    
+    // Test the URL by creating an image element
+    const testImg = new Image();
+    testImg.onload = () => console.log('✅ UPLOAD: Image URL is accessible and valid');
+    testImg.onerror = () => console.warn('⚠️ UPLOAD: Image URL might have issues');
+    testImg.src = downloadURL;
     
     return { 
       success: true, 

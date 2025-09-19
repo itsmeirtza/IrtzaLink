@@ -67,83 +67,153 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
 
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  List<Map<String, dynamic>> _searchResults = [];
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('IrtzaLink Dashboard'),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // TODO: Show notifications
-            },
-          ),
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: const Text('Settings'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+        title: _isSearching 
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search users...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white70),
                 ),
-              ),
-              PopupMenuItem(
-                child: const Text('Logout'),
-                onTap: () => context.read<AuthService>().signOut(),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Section
-            Consumer<AuthService>(
-              builder: (context, auth, child) {
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundImage: auth.user?.photoURL != null
-                              ? NetworkImage(auth.user!.photoURL!)
-                              : null,
-                          child: auth.user?.photoURL == null
-                              ? const Icon(Icons.person, size: 30)
-                              : null,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Welcome back, ${auth.user?.displayName ?? 'User'}!',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              Text(
-                                'Manage your personal links',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                style: const TextStyle(color: Colors.white),
+                onChanged: _performSearch,
+              )
+            : const Text('IrtzaLink Dashboard'),
+        elevation: 0,
+        leading: _isSearching 
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = false;
+                    _searchController.clear();
+                    _searchResults.clear();
+                  });
+                },
+              )
+            : null,
+        actions: [
+          if (!_isSearching) ..[
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
               },
             ),
+            IconButton(
+              icon: const Icon(Icons.notifications),
+              onPressed: () => _showNotifications(context),
+            ),
+            PopupMenuButton(
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'admin',
+                  child: Row(
+                    children: [
+                      Icon(Icons.admin_panel_settings, size: 20),
+                      SizedBox(width: 8),
+                      Text('Admin Panel'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: Row(
+                    children: [
+                      Icon(Icons.settings, size: 20),
+                      SizedBox(width: 8),
+                      Text('Settings'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, size: 20),
+                      SizedBox(width: 8),
+                      Text('Logout'),
+                    ],
+                  ),
+                ),
+              ],
+              onSelected: (value) {
+                switch (value) {
+                  case 'admin':
+                    _showAdminPanel(context);
+                    break;
+                  case 'settings':
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                    );
+                    break;
+                  case 'logout':
+                    _showLogoutDialog(context);
+                    break;
+                }
+              },
+            ),
+          ],
+        ],
+      ),
+      body: _isSearching && _searchResults.isNotEmpty
+          ? _buildSearchResults()
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Section
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.blue,
+                            child: Icon(Icons.person, size: 30, color: Colors.white),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Welcome back, Demo User!',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                Text(
+                                  'Manage your personal links',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
             const SizedBox(height: 20),
             
             // Quick Stats
@@ -152,60 +222,52 @@ class DashboardScreen extends StatelessWidget {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Consumer<UserService>(
-              builder: (context, userService, child) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        context,
-                        'Profile Views',
-                        '${userService.profileViews}',
-                        Icons.visibility,
-                        Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildStatCard(
-                        context,
-                        'QR Scans',
-                        '${userService.qrScans}',
-                        Icons.qr_code_scanner,
-                        Colors.green,
-                      ),
-                    ),
-                  ],
-                );
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    'Profile Views',
+                    '1,234',
+                    Icons.visibility,
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    'QR Scans',
+                    '567',
+                    Icons.qr_code_scanner,
+                    Colors.green,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
-            Consumer<UserService>(
-              builder: (context, userService, child) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        context,
-                        'Total Links',
-                        '${userService.totalLinks}',
-                        Icons.link,
-                        Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildStatCard(
-                        context,
-                        'Link Clicks',
-                        '${userService.linkClicks}',
-                        Icons.mouse,
-                        Colors.purple,
-                      ),
-                    ),
-                  ],
-                );
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    'Total Links',
+                    '8',
+                    Icons.link,
+                    Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    'Link Clicks',
+                    '2,891',
+                    Icons.mouse,
+                    Colors.purple,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             
@@ -264,8 +326,262 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ],
             ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  void _performSearch(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults.clear();
+      });
+      return;
+    }
+
+    // Simulate search results
+    await Future.delayed(const Duration(milliseconds: 300));
+    setState(() {
+      _searchResults = [
+        {
+          'username': 'itsmeirtza',
+          'displayName': 'Irtza',
+          'isVerified': true,
+          'profileImage': null,
+        },
+        {
+          'username': 'ialiwaris',
+          'displayName': 'Ali Waris',
+          'isVerified': true,
+          'profileImage': null,
+        },
+      ].where((user) => 
+          user['username'].toLowerCase().contains(query.toLowerCase()) ||
+          user['displayName'].toLowerCase().contains(query.toLowerCase())
+      ).toList();
+    });
+  }
+
+  Widget _buildSearchResults() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _searchResults.length,
+      itemBuilder: (context, index) {
+        final user = _searchResults[index];
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.blue,
+              child: Text(
+                user['displayName'][0].toUpperCase(),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+            title: Row(
+              children: [
+                Text(user['displayName']),
+                if (user['isVerified']) 
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(Icons.verified, color: Colors.blue, size: 16),
+                  ),
+              ],
+            ),
+            subtitle: Text('@${user['username']}'),
+            trailing: ElevatedButton(
+              onPressed: () => _followUser(user['username']),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(80, 32),
+              ),
+              child: const Text('Follow'),
+            ),
+            onTap: () => _viewProfile(user['username']),
+          ),
+        );
+      },
+    );
+  }
+
+  void _followUser(String username) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Following @$username'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _viewProfile(String username) {
+    // Navigate to user profile
+  }
+
+  void _showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Notifications',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildNotificationItem(
+                    'New follower',
+                    '@ialiwaris started following you',
+                    Icons.person_add,
+                    Colors.blue,
+                  ),
+                  _buildNotificationItem(
+                    'Profile view',
+                    'Someone viewed your profile',
+                    Icons.visibility,
+                    Colors.green,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+  ) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: color.withOpacity(0.1),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Text(
+        '2m ago',
+        style: TextStyle(color: Colors.grey, fontSize: 12),
+      ),
+    );
+  }
+
+  void _showAdminPanel(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.admin_panel_settings, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Admin Panel',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    children: [
+                      _buildAdminSection('User Management', [
+                        _buildAdminAction('View All Users', Icons.people, () {}),
+                        _buildAdminAction('Manage Verified Users', Icons.verified, () {}),
+                        _buildAdminAction('User Reports', Icons.report, () {}),
+                      ]),
+                      _buildAdminSection('Analytics', [
+                        _buildAdminAction('System Statistics', Icons.analytics, () {}),
+                        _buildAdminAction('Usage Reports', Icons.insert_chart, () {}),
+                      ]),
+                      _buildAdminSection('Settings', [
+                        _buildAdminAction('App Configuration', Icons.settings, () {}),
+                        _buildAdminAction('Feature Flags', Icons.flag, () {}),
+                      ]),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminSection(String title, List<Widget> actions) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ...actions,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminAction(String title, IconData icon, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.blue),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Logout logic here
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
       ),
     );
   }

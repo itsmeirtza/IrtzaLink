@@ -100,6 +100,12 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // BYPASS AUTHENTICATION - Go directly to main app
+    // This allows testing the UI without authentication
+    return const HomeScreen();
+    
+    // Original auth logic (commented for testing):
+    /*
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         // Show splash screen while checking auth state
@@ -116,5 +122,6 @@ class AuthWrapper extends StatelessWidget {
         return const HomeScreen();
       },
     );
+    */
   }
 }

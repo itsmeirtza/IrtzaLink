@@ -75,6 +75,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
         // Save to persistent storage
         followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
         
+        // Force re-check to ensure UI consistency
+        setTimeout(() => {
+          checkRelationship();
+        }, 500);
+        
         if (onFollowChange) onFollowChange();
       } else {
         toast.error(result.error || 'Failed to follow user');
@@ -86,6 +91,12 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
       setRelationship(newRelationship);
       followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
       toast.success(`Following @${targetUser.username} (will sync when online)`);
+      
+      // Force re-check to ensure UI consistency
+      setTimeout(() => {
+        checkRelationship();
+      }, 500);
+      
       if (onFollowChange) onFollowChange();
     } finally {
       setLoading(false);
@@ -106,6 +117,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
         // Save to persistent storage
         followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
         
+        // Force re-check to ensure UI consistency
+        setTimeout(() => {
+          checkRelationship();
+        }, 500);
+        
         if (onFollowChange) onFollowChange();
       } else {
         toast.error('Failed to unfollow user');
@@ -117,6 +133,12 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
       setRelationship(newRelationship);
       followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
       toast.success(`Unfollowed @${targetUser.username} (will sync when online)`);
+      
+      // Force re-check to ensure UI consistency
+      setTimeout(() => {
+        checkRelationship();
+      }, 500);
+      
       if (onFollowChange) onFollowChange();
     } finally {
       setLoading(false);
