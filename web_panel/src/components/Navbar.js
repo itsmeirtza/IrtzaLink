@@ -94,18 +94,24 @@ const Navbar = ({ user, darkMode, toggleDarkMode, openChatManager }) => {
   ];
 
   return (
-    <nav className="fixed top-0 w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
-            <img 
-              src={require('../assets/irtzalink-logo.svg').default} 
-              alt="IrtzaLink" 
-              className="w-8 h-8"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-white">IrtzaLink</span>
-          </Link>
+    <>
+      <nav className="fixed top-0 w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 z-50 shadow-lg">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo with 3D hover effect */}
+            <Link to={user ? "/dashboard" : "/"} className="flex items-center space-x-3 hover-3d group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-500 rounded-full blur opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
+                <img 
+                  src={require('../assets/irtzalink-logo.svg').default} 
+                  alt="IrtzaLink" 
+                  className="w-10 h-10 relative z-10 transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
+                />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
+                IrtzaLink
+              </span>
+            </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">

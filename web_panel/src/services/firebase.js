@@ -1204,91 +1204,150 @@ export const isFollowing = async (followerId, followingId) => {
   }
 };
 
-// Get user's followers
+// Get user's followers - FIXED to use direct Firebase storage
 export const getUserFollowers = async (userId, limitCount = 50) => {
   try {
-    const userData = await getUserData(userId);
-    if (userData.success && userData.data.followers) {
-      const followerIds = userData.data.followers.slice(0, limitCount);
-      
-      const followers = await Promise.all(
-        followerIds.map(async (followerId) => {
-          const followerData = await getUserData(followerId);
-          if (followerData.success) {
+    console.log(`🔍 FOLLOWERS: Getting followers for user ${userId.slice(0, 8)}`);
+    
+    // Get user data directly from Firebase
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.log(`❌ FOLLOWERS: User ${userId.slice(0, 8)} not found`);
+      return { success: true, data: [] };
+    }
+    
+    const userData = docSnap.data();
+    if (!userData.followers || userData.followers.length === 0) {
+      console.log(`📝 FOLLOWERS: User ${userId.slice(0, 8)} has no followers`);
+      return { success: true, data: [] };
+    }
+    
+    const followerIds = userData.followers.slice(0, limitCount);
+    console.log(`🔍 FOLLOWERS: Loading data for ${followerIds.length} followers`);
+    
+    const followers = await Promise.all(
+      followerIds.map(async (followerId) => {
+        try {
+          const followerDocRef = doc(db, 'users', followerId);
+          const followerDocSnap = await getDoc(followerDocRef);
+          
+          if (followerDocSnap.exists()) {
+            const followerData = followerDocSnap.data();
             return {
               uid: followerId,
-              username: followerData.data.username,
-              displayName: followerData.data.displayName,
-              photoURL: followerData.data.photoURL,
-              bio: followerData.data.bio,
-              followers: followerData.data.followers || [],
-              following: followerData.data.following || []
+              username: followerData.username,
+              displayName: followerData.displayName,
+              photoURL: followerData.photoURL,
+              bio: followerData.bio,
+              followers: followerData.followers || [],
+              following: followerData.following || []
             };
           }
-          return null;
-        })
-      );
-      
-      return { success: true, data: followers.filter(Boolean) };
-    }
-    return { success: true, data: [] };
+        } catch (error) {
+          console.error(`Error loading follower ${followerId}:`, error);
+        }
+        return null;
+      })
+    );
+    
+    const validFollowers = followers.filter(Boolean);
+    console.log(`✅ FOLLOWERS: Loaded ${validFollowers.length} followers successfully`);
+    return { success: true, data: validFollowers };
+    
   } catch (error) {
-    console.error('Error getting followers:', error);
+    console.error('❌ FOLLOWERS: Error getting followers:', error);
     return { success: false, error: error.message };
   }
 };
 
-// Get user's following
+// Get user's following - FIXED to use direct Firebase storage
 export const getUserFollowing = async (userId, limitCount = 50) => {
   try {
-    const userData = await getUserData(userId);
-    if (userData.success && userData.data.following) {
-      const followingIds = userData.data.following.slice(0, limitCount);
-      
-      const following = await Promise.all(
-        followingIds.map(async (followingId) => {
-          const followingData = await getUserData(followingId);
-          if (followingData.success) {
+    console.log(`🔍 FOLLOWING: Getting following for user ${userId.slice(0, 8)}`);
+    
+    // Get user data directly from Firebase
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.log(`❌ FOLLOWING: User ${userId.slice(0, 8)} not found`);
+      return { success: true, data: [] };
+    }
+    
+    const userData = docSnap.data();
+    if (!userData.following || userData.following.length === 0) {
+      console.log(`📝 FOLLOWING: User ${userId.slice(0, 8)} is not following anyone`);
+      return { success: true, data: [] };
+    }
+    
+    const followingIds = userData.following.slice(0, limitCount);
+    console.log(`🔍 FOLLOWING: Loading data for ${followingIds.length} users`);
+    
+    const following = await Promise.all(
+      followingIds.map(async (followingId) => {
+        try {
+          const followingDocRef = doc(db, 'users', followingId);
+          const followingDocSnap = await getDoc(followingDocRef);
+          
+          if (followingDocSnap.exists()) {
+            const followingData = followingDocSnap.data();
             return {
               uid: followingId,
-              username: followingData.data.username,
-              displayName: followingData.data.displayName,
-              photoURL: followingData.data.photoURL,
-              bio: followingData.data.bio,
-              followers: followingData.data.followers || [],
-              following: followingData.data.following || []
+              username: followingData.username,
+              displayName: followingData.displayName,
+              photoURL: followingData.photoURL,
+              bio: followingData.bio,
+              followers: followingData.followers || [],
+              following: followingData.following || []
             };
           }
-          return null;
-        })
-      );
-      
-      return { success: true, data: following.filter(Boolean) };
-    }
-    return { success: true, data: [] };
+        } catch (error) {
+          console.error(`Error loading following user ${followingId}:`, error);
+        }
+        return null;
+      })
+    );
+    
+    const validFollowing = following.filter(Boolean);
+    console.log(`✅ FOLLOWING: Loaded ${validFollowing.length} following users successfully`);
+    return { success: true, data: validFollowing };
+    
   } catch (error) {
-    console.error('Error getting following:', error);
+    console.error('❌ FOLLOWING: Error getting following:', error);
     return { success: false, error: error.message };
   }
 };
 
-// Get follow counts
+// Get follow counts - FIXED to use direct Firebase storage
 export const getFollowCounts = async (userId) => {
   try {
-    const userData = await getUserData(userId);
-    if (userData.success) {
-      const followersCount = userData.data.followers?.length || 0;
-      const followingCount = userData.data.following?.length || 0;
-      
-      return {
-        success: true,
-        followersCount,
-        followingCount
-      };
+    console.log(`🔢 COUNTS: Getting follow counts for user ${userId.slice(0, 8)}`);
+    
+    // Get user data directly from Firebase
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.log(`❌ COUNTS: User ${userId.slice(0, 8)} not found`);
+      return { success: true, followersCount: 0, followingCount: 0 };
     }
-    return { success: true, followersCount: 0, followingCount: 0 };
+    
+    const userData = docSnap.data();
+    const followersCount = userData.followers?.length || 0;
+    const followingCount = userData.following?.length || 0;
+    
+    console.log(`✅ COUNTS: User ${userId.slice(0, 8)} has ${followersCount} followers, ${followingCount} following`);
+    
+    return {
+      success: true,
+      followersCount,
+      followingCount
+    };
+    
   } catch (error) {
-    console.error('Error getting follow counts:', error);
+    console.error('❌ COUNTS: Error getting follow counts:', error);
     return { success: false, error: error.message, followersCount: 0, followingCount: 0 };
   }
 };

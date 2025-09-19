@@ -151,23 +151,21 @@ export const getPublicProfile = async (username) => {
   }
 };
 
-// SIMPLE: Search users by username
+// ENHANCED: Search users by username, display name, and bio
 export const searchUsers = async (searchTerm) => {
   try {
     if (!searchTerm || searchTerm.trim().length < 2) {
       return { success: true, data: [] };
     }
 
-    console.log(`🔍 SIMPLE: Searching for "${searchTerm}"`);
+    console.log(`🔍 ENHANCED: Searching for "${searchTerm}" in username, displayName, and bio`);
     
     const searchLower = searchTerm.toLowerCase();
     
-    // Search by username
+    // Get all users and filter client-side for better search
     const q = query(
       collection(db, 'users'),
-      where('username', '>=', searchLower),
-      where('username', '<=', searchLower + '\uf8ff'),
-      limit(10)
+      limit(100) // Get more users to search through
     );
     
     const querySnapshot = await getDocs(q);
@@ -175,23 +173,44 @@ export const searchUsers = async (searchTerm) => {
     
     querySnapshot.forEach((doc) => {
       const userData = doc.data();
-      if (userData.isActive !== false && userData.username) {
-        results.push({
-          uid: doc.id,
-          username: userData.username,
-          displayName: userData.displayName || userData.username,
-          photoURL: userData.photoURL,
-          bio: userData.bio,
-          isActive: true
-        });
+      if (userData.isActive !== false && (userData.username || userData.displayName)) {
+        const username = (userData.username || '').toLowerCase();
+        const displayName = (userData.displayName || '').toLowerCase();
+        const bio = (userData.bio || '').toLowerCase();
+        
+        // Search in username, displayName, and bio
+        if (username.includes(searchLower) || 
+            displayName.includes(searchLower) || 
+            bio.includes(searchLower)) {
+          
+          results.push({
+            uid: doc.id,
+            username: userData.username,
+            displayName: userData.displayName || userData.username,
+            photoURL: userData.photoURL,
+            bio: userData.bio,
+            isActive: true,
+            // Add search relevance score
+            relevance: username.startsWith(searchLower) ? 3 : 
+                      displayName.startsWith(searchLower) ? 2 : 
+                      username.includes(searchLower) ? 1.5 : 
+                      displayName.includes(searchLower) ? 1 : 0.5
+          });
+        }
       }
     });
     
-    console.log(`✅ SIMPLE: Found ${results.length} users for "${searchTerm}"`);
-    return { success: true, data: results };
+    // Sort by relevance (most relevant first)
+    results.sort((a, b) => b.relevance - a.relevance);
+    
+    // Remove relevance score from final results and limit to 15
+    const finalResults = results.slice(0, 15).map(({ relevance, ...user }) => user);
+    
+    console.log(`✅ ENHANCED: Found ${finalResults.length} users for "${searchTerm}"`);
+    return { success: true, data: finalResults };
     
   } catch (error) {
-    console.error('❌ SIMPLE: Search error:', error);
+    console.error('❌ ENHANCED: Search error:', error);
     return { success: false, error: error.message };
   }
 };

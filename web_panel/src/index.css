@@ -3,6 +3,219 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-First Responsive Design & 3D Animations */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  /* Mobile-optimized touch targets */
+  .btn-primary,
+  .btn-secondary {
+    @apply min-h-[44px] px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform;
+    touch-action: manipulation;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg;
+  }
+  
+  .btn-primary:hover {
+    @apply scale-105 shadow-xl;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 30px rgba(59, 130, 246, 0.3);
+  }
+  
+  .btn-primary:active {
+    @apply scale-95;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600;
+  }
+  
+  /* Enhanced card component with 3D effects */
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-all duration-300;
+  }
+  
+  .card:hover {
+    @apply shadow-2xl;
+    transform: translateY(-5px) rotateX(5deg);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Mobile-optimized form inputs */
+  .input-field {
+    @apply w-full min-h-[44px] px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+  }
+  
+  .input-field:focus {
+    transform: scale(1.02);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1);
+  }
+  
+  /* Mobile navigation enhancements */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-50;
+    box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 3D hover effects for interactive elements */
+  .hover-3d {
+    @apply transition-all duration-300 transform;
+  }
+  
+  .hover-3d:hover {
+    transform: translateY(-8px) rotateY(5deg) rotateX(5deg);
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.25),
+      0 0 40px rgba(59, 130, 246, 0.1);
+  }
+  
+  /* Floating animation for special elements */
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) rotateY(0deg);
+    }
+    50% {
+      transform: translateY(-10px) rotateY(5deg);
+    }
+  }
+  
+  /* Pulse animation with 3D effect */
+  .pulse-3d {
+    animation: pulse3d 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse3d {
+    0%, 100% {
+      transform: scale(1) rotateZ(0deg);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      transform: scale(1.05) rotateZ(2deg);
+      box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+    }
+  }
+  
+  /* Gradient text effects */
+  .gradient-text {
+    @apply bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent;
+  }
+  
+  /* Glass morphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .dark .glass {
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@layer utilities {
+  /* Mobile-specific utilities */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  .perspective {
+    perspective: 1000px;
+  }
+  
+  .transform-gpu {
+    transform: translateZ(0);
+  }
+  
+  /* Custom scrollbars for mobile */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.5) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(59, 130, 246, 0.5);
+    border-radius: 3px;
+  }
+  
+  /* Animation delays for staggered effects */
+  .delay-100 { animation-delay: 0.1s; }
+  .delay-200 { animation-delay: 0.2s; }
+  .delay-300 { animation-delay: 0.3s; }
+  .delay-400 { animation-delay: 0.4s; }
+  .delay-500 { animation-delay: 0.5s; }
+}
+
+/* Mobile-specific media queries */
+@media (max-width: 768px) {
+  .container {
+    @apply px-4;
+  }
+  
+  /* Larger touch targets on mobile */
+  .btn-primary,
+  .btn-secondary {
+    @apply min-h-[48px] px-8 py-4 text-lg;
+  }
+  
+  /* Better spacing on mobile */
+  .card {
+    @apply mx-4 rounded-xl;
+  }
+  
+  /* Mobile-optimized typography */
+  h1 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+  
+  h2 {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+  
+  h3 {
+    @apply text-xl md:text-2xl lg:text-3xl;
+  }
+}
+
+/* Dark mode enhancements with 3D effects */
+@media (prefers-color-scheme: dark) {
+  .card:hover {
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.5),
+      0 0 40px rgba(59, 130, 246, 0.2);
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 
+      0 20px 25px -5px rgba(0, 0, 0, 0.3),
+      0 10px 10px -5px rgba(0, 0, 0, 0.2),
+      0 0 30px rgba(59, 130, 246, 0.4);
+  }
+}
+
 * {
   margin: 0;
   padding: 0;

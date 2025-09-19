@@ -1,10 +1,182 @@
 import React, { useContext } from 'react';
-import { CheckBadgeIcon, SparklesIcon, StarIcon, PhoneIcon, EnvelopeIcon, ShieldCheckIcon, TrophyIcon, EyeIcon, UserGroupIcon, BoltIcon } from '@heroicons/react/24/solid';
+import { CheckBadgeIcon, SparklesIcon, StarIcon, PhoneIcon, EnvelopeIcon, ShieldCheckIcon, TrophyIcon, EyeIcon, UserGroupIcon, BoltIcon, GiftIcon, CrownIcon } from '@heroicons/react/24/solid';
 import { motion } from 'framer-motion';
 import { AuthContext } from '../App';
+import { isVerifiedUser } from '../config/verifiedAccounts';
 
 const GetVerified = ({ user }) => {
-  // Get user from props instead of context
+  // Check if user is already verified
+  const isUserVerified = user && user.userData && user.userData.username && isVerifiedUser(user.userData.username);
+  
+  // If user is already verified, show verified status page
+  if (isUserVerified) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 py-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          {/* Verified Status Hero */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-12"
+          >
+            {/* Floating Animation Container */}
+            <motion.div
+              animate={{ 
+                y: [0, -10, 0],
+                rotateY: [0, 5, 0, -5, 0]
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="mb-8"
+            >
+              <div className="relative inline-block">
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 scale-150 animate-pulse"></div>
+                {/* Crown icon with 3D effect */}
+                <motion.div
+                  whileHover={{ scale: 1.1, rotateY: 15 }}
+                  className="relative bg-gradient-to-tr from-blue-500 to-purple-600 p-6 rounded-full shadow-2xl transform-gpu"
+                  style={{
+                    background: 'linear-gradient(135deg, #3B82F6, #8B5CF6, #EF4444)',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 40px rgba(59, 130, 246, 0.3)'
+                  }}
+                >
+                  <CrownIcon className="w-16 h-16 text-yellow-300 drop-shadow-lg" />
+                </motion.div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+                You're Verified!
+              </h1>
+              
+              <div className="flex items-center justify-center space-x-2 mb-6">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <CheckBadgeIcon className="w-8 h-8 text-blue-500" />
+                </motion.div>
+                <span className="text-2xl font-bold text-gray-800 dark:text-white">
+                  @{user.userData.username}
+                </span>
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <CheckBadgeIcon className="w-8 h-8 text-blue-500" />
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Verified Benefits */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="grid md:grid-cols-3 gap-6 mb-12"
+          >
+            {[
+              {
+                icon: <CheckBadgeIcon className="w-8 h-8" />,
+                title: "Verified Badge",
+                description: "Your blue checkmark is active and visible to everyone",
+                color: "from-blue-500 to-cyan-500"
+              },
+              {
+                icon: <StarIcon className="w-8 h-8" />,
+                title: "Enhanced Trust",
+                description: "People know your profile is authentic and verified",
+                color: "from-yellow-500 to-orange-500"
+              },
+              {
+                icon: <CrownIcon className="w-8 h-8" />,
+                title: "Premium Status",
+                description: "You're part of the exclusive verified community",
+                color: "from-purple-500 to-pink-500"
+              }
+            ].map((benefit, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5 + index * 0.1 }}
+                whileHover={{ 
+                  scale: 1.05,
+                  rotateY: 5,
+                  z: 50
+                }}
+                className="relative group"
+              >
+                <div className={`bg-gradient-to-br ${benefit.color} p-1 rounded-2xl shadow-lg group-hover:shadow-2xl transition-all duration-300`}>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 h-full">
+                    <div className={`text-white bg-gradient-to-r ${benefit.color} p-3 rounded-xl mb-4 inline-block`}>
+                      {benefit.icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      {benefit.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      {benefit.description}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Celebration Message */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="text-center bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden"
+          >
+            {/* Background decoration */}
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-3xl"></div>
+            
+            <div className="relative z-10">
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-6xl mb-4"
+              >
+                🎉
+              </motion.div>
+              
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                Congratulations!
+              </h2>
+              
+              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-6">
+                Your account is verified and your blue checkmark is proudly displayed. 
+                You're now part of the exclusive verified community on IrtzaLink!
+              </p>
+              
+              <motion.button
+                whileHover={{ scale: 1.05, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => window.location.href = '/profile'}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 shadow-xl hover:shadow-2xl"
+              >
+                View My Profile
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   const handleWhatsAppContact = () => {
     const message = encodeURIComponent("Hi! I'm interested in getting verified badge for my IrtzaLink profile. Please provide more details about the verification process.");
