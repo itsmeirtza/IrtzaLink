@@ -110,7 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               )
             : null,
         actions: [
-          if (!_isSearching) ..[
+          if (!_isSearching) ...[
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: () {
@@ -357,8 +357,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'profileImage': null,
         },
       ].where((user) => 
-          user['username'].toLowerCase().contains(query.toLowerCase()) ||
-          user['displayName'].toLowerCase().contains(query.toLowerCase())
+          (user['username'] as String).toLowerCase().contains(query.toLowerCase()) ||
+          (user['displayName'] as String).toLowerCase().contains(query.toLowerCase())
       ).toList();
     });
   }
@@ -374,14 +374,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             leading: CircleAvatar(
               backgroundColor: Colors.blue,
               child: Text(
-                user['displayName'][0].toUpperCase(),
+                (user['displayName'] as String)[0].toUpperCase(),
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
             title: Row(
               children: [
-                Text(user['displayName']),
-                if (user['isVerified']) 
+                Text(user['displayName'] as String),
+                if (user['isVerified'] as bool) 
                   const Padding(
                     padding: EdgeInsets.only(left: 4),
                     child: Icon(Icons.verified, color: Colors.blue, size: 16),
@@ -390,7 +390,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             subtitle: Text('@${user['username']}'),
             trailing: ElevatedButton(
-              onPressed: () => _followUser(user['username']),
+              onPressed: () => _followUser(user['username'] as String),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
@@ -398,7 +398,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               child: const Text('Follow'),
             ),
-            onTap: () => _viewProfile(user['username']),
+            onTap: () => _viewProfile(user['username'] as String),
           ),
         );
       },
@@ -482,9 +482,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.9,
         builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -493,7 +493,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.admin_panel_settings, color: Colors.red),
+                    const Icon(Icons.admin_panel_settings, color: Colors.red),
                     const SizedBox(width: 8),
                     Text(
                       'Admin Panel',
