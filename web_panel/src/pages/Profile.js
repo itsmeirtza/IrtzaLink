@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import localStorageFix from '../services/localStorageFix';
 import supabaseService from '../services/supabaseService';
 import { socialPlatforms } from '../utils/socialIcons';
 import toast from 'react-hot-toast';
@@ -80,21 +81,51 @@ const Profile = ({ user }) => {
 
   const loadUserData = async () => {
     try {
-      console.log('🔍 PROFILE: Loading user data from Firestore');
-      const result = await supabaseService.getUserData(user.uid);
+      console.log('🔍 PROFILE: Loading user data with fallback system');
+      let result;
+      
+      // Try Supabase first, fallback to LocalStorage
+      try {
+        result = await supabaseService.getUserData(user.uid);
+        if (!result.success) {
+          throw new Error('Supabase failed');
+        }
+        console.log('✅ PROFILE: Data loaded from Supabase');
+      } catch (error) {
+        console.log('⚠️ PROFILE: Supabase failed, using LocalStorage');
+        result = localStorageFix.loadUserData(user.uid);
+        if (!result.success) {
+          // Create new user data if nothing exists
+          const newUserData = {
+            displayName: user.displayName || user.email?.split('@')[0] || 'User',
+            email: user.email || '',
+            username: '',
+            bio: '',
+            photoURL: user.photoURL || '',
+            socialLinks: {},
+            contactInfo: { email: user.email || '' },
+            theme: 'dark',
+            profileURL: '',
+            isActive: true
+          };
+          localStorageFix.saveUserData(user.uid, newUserData);
+          result = { success: true, data: newUserData };
+          console.log('✨ PROFILE: Created new user data');
+        } else {
+          console.log('✅ PROFILE: Data loaded from LocalStorage');
+        }
+      }
       
       if (result.success) {
         const userData = result.data;
         
         setFormData({
-          display_name: userData.display_name || user.displayName || '',
+          display_name: userData.displayName || user.displayName || '',
           username: userData.username || '',
           bio: userData.bio || '',
-          profile_pic_url: userData.profile_pic_url || user.photoURL || '',
-          social_links: userData.social_links || Object.fromEntries(
-            socialPlatforms.map(platform => [platform.key, ''])
-          ),
-          contact_info: userData.contact_info || {
+          profile_pic_url: userData.photoURL || user.photoURL || '',
+          social_links: userData.socialLinks || {},
+          contact_info: userData.contactInfo || {
             phone: '',
             email: user.email || '',
             website: ''
@@ -103,9 +134,7 @@ const Profile = ({ user }) => {
         });
 
         setUserData(userData);
-        console.log('✅ PROFILE: User data loaded successfully');
-      } else {
-        console.log('⚠️ PROFILE: No user data found, using defaults');
+        console.log('✅ PROFILE: Form data updated successfully');
       }
     } catch (error) {
       console.error('❌ PROFILE: Error loading user data:', error);
@@ -198,26 +227,61 @@ const Profile = ({ user }) => {
         return;
       }
 
-      console.log('💾 PROFILE: Saving user data to Firestore');
+      console.log('💾 PROFILE: Saving user data with fallback system');
       
-      const result = await supabaseService.updateUserData(user.uid, {
-        display_name: formData.display_name.trim(),
+      // Prepare data in the format expected by storage services
+      const profileData = {
+        displayName: formData.display_name.trim(),
         username: formData.username.toLowerCase().trim(),
         bio: formData.bio || '',
-        social_links: formData.social_links,
-        contact_info: formData.contact_info,
-        theme: formData.theme
-      });
+        photoURL: formData.profile_pic_url || user.photoURL || '',
+        socialLinks: formData.social_links || {},
+        contactInfo: formData.contact_info || {},
+        theme: formData.theme || 'dark',
+        email: user.email || '',
+        isActive: true,
+        profileURL: formData.username ? `${window.location.origin}/${formData.username}` : ''
+      };
 
-      if (result.success) {
-        toast.success('Profile updated successfully!');
-        console.log('✅ PROFILE: Profile saved to Firestore');
+      let result;
+      
+      // Always save to LocalStorage first (for immediate persistence)
+      const localResult = localStorageFix.updateUserData(user.uid, profileData);
+      console.log('💾 PROFILE: Data saved to LocalStorage:', localResult.success);
+      
+      // Try to save to Supabase as backup
+      try {
+        result = await supabaseService.saveUserData(user.uid, {
+          display_name: profileData.displayName,
+          username: profileData.username,
+          bio: profileData.bio,
+          photo_url: profileData.photoURL,
+          social_links: profileData.socialLinks,
+          contact_info: profileData.contactInfo,
+          theme: profileData.theme,
+          profile_url: profileData.profileURL
+        });
         
-        // Refresh user data
-        await loadUserData();
-      } else {
-        toast.error(result.error || 'Error saving profile');
+        if (result.success) {
+          console.log('✅ PROFILE: Data also saved to Supabase');
+        } else {
+          console.log('⚠️ PROFILE: Supabase save failed, but LocalStorage succeeded');
+        }
+      } catch (error) {
+        console.log('⚠️ PROFILE: Supabase error, but LocalStorage succeeded:', error.message);
       }
+      
+      // Update the current user data in state
+      setUserData(profileData);
+      
+      // Success if LocalStorage worked (Supabase is optional)
+      if (localResult.success) {
+        toast.success('✅ Profile updated successfully! (Data persists like username)');
+        console.log('✅ PROFILE: Profile saved successfully with data persistence');
+      } else {
+        toast.error('Error saving profile data');
+      }
+      
     } catch (error) {
       console.error('❌ PROFILE: Error saving profile:', error);
       toast.error('Error saving profile');

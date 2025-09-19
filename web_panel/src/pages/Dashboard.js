@@ -47,23 +47,32 @@ const Dashboard = ({ user }) => {
     try {
       console.log('🔄 Dashboard: Fetching data for current user:', user.uid);
       
-      // Try Supabase first, fallback to LocalStorage
-      let result;
-      try {
-        result = await supabaseService.getUserData(user.uid);
-      } catch (error) {
-        console.log('⚠️ Supabase failed, using LocalStorage');
-        result = localStorageFix.loadUserData(user.uid);
-      }
+      // Always try LocalStorage first (where data is actually saved)
+      let result = localStorageFix.loadUserData(user.uid);
       
       if (result.success) {
-        console.log('✅ Dashboard: User data loaded successfully');
+        console.log('✅ Dashboard: User data loaded from LocalStorage');
         setUserData(result.data);
       } else {
-        console.error('❌ Dashboard: Failed to load user data:', result.error);
-        // Use data from user object as fallback
-        if (user.userData) {
-          setUserData(user.userData);
+        // Try Supabase as fallback
+        try {
+          result = await supabaseService.getUserData(user.uid);
+          if (result.success) {
+            console.log('✅ Dashboard: User data loaded from Supabase');
+            setUserData(result.data);
+          } else {
+            console.log('⚠️ Dashboard: No data found anywhere');
+            // Use data from user object as final fallback
+            if (user.userData) {
+              setUserData(user.userData);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ Dashboard: All data sources failed');
+          // Use data from user object as final fallback
+          if (user.userData) {
+            setUserData(user.userData);
+          }
         }
       }
     } catch (error) {
