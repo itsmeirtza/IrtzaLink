@@ -61,11 +61,12 @@ class SupabaseService {
         updated_at: new Date().toISOString()
       };
 
+      // Use UPSERT to handle existing records
       const response = await fetch(`${this.baseUrl}/rest/v1/users`, {
         method: 'POST',
         headers: {
           ...this.headers,
-          'Prefer': 'resolution=merge-duplicates'
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
         },
         body: JSON.stringify(payload)
       });
