@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { trackProfileVisit } from '../services/firebase';
-import { getUserData } from '../services/dataStorage';
+import localStorageFix from '../services/localStorageFix';
+import supabaseService from '../services/supabaseService';
 import FollowButton from '../components/FollowButton';
 import { socialPlatforms } from '../utils/socialIcons';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -34,7 +35,15 @@ const PublicUserProfile = ({ currentUser }) => {
 
   const fetchUserProfile = async () => {
     try {
-      const result = await getUserData(userId);
+      // Try Supabase first, fallback to LocalStorage
+      let result;
+      try {
+        result = await supabaseService.getUserData(userId);
+      } catch (error) {
+        console.log('⚠️ Supabase failed, using LocalStorage');
+        result = localStorageFix.loadUserData(userId);
+      }
+      
       if (result.success) {
         setUserData(result.data);
       }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserAnalytics } from '../services/firebase';
-import { getUserData, searchUsers } from '../services/dataStorage';
+import localStorageFix from '../services/localStorageFix';
+import supabaseService from '../services/supabaseService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -45,15 +46,32 @@ const Dashboard = ({ user }) => {
   const fetchUserData = async () => {
     try {
       console.log('🔄 Dashboard: Fetching data for current user:', user.uid);
-      const result = await getUserData(user.uid);
+      
+      // Try Supabase first, fallback to LocalStorage
+      let result;
+      try {
+        result = await supabaseService.getUserData(user.uid);
+      } catch (error) {
+        console.log('⚠️ Supabase failed, using LocalStorage');
+        result = localStorageFix.loadUserData(user.uid);
+      }
+      
       if (result.success) {
         console.log('✅ Dashboard: User data loaded successfully');
         setUserData(result.data);
       } else {
         console.error('❌ Dashboard: Failed to load user data:', result.error);
+        // Use data from user object as fallback
+        if (user.userData) {
+          setUserData(user.userData);
+        }
       }
     } catch (error) {
       console.error('❌ Dashboard: Error fetching user data:', error);
+      // Use data from user object as fallback
+      if (user.userData) {
+        setUserData(user.userData);
+      }
     }
   };
 
@@ -132,18 +150,12 @@ const Dashboard = ({ user }) => {
 
     setSearchLoading(true);
     try {
-      console.log('🔍 UNIFIED: Searching from Dashboard...', query);
-      const result = await searchUsers(query.trim());
-      if (result.success) {
-        console.log('✅ UNIFIED: Search results:', result.data.length);
-        setSearchResults(result.data);
-        setShowSearchResults(true);
-      } else {
-        console.error('❌ UNIFIED: Search failed:', result.error);
-        setSearchResults([]);
-      }
+      console.log('🔍 Dashboard: Search temporarily disabled');
+      // TODO: Implement search with new storage system
+      setSearchResults([]);
+      setShowSearchResults(true);
     } catch (error) {
-      console.error('❌ UNIFIED: Search error:', error);
+      console.error('❌ Dashboard: Search error:', error);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);

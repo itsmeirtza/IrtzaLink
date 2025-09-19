@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getUserData, getUserFollowers } from '../services/firebase';
+import { getUserFollowers } from '../services/firebase';
+import localStorageFix from '../services/localStorageFix';
+import supabaseService from '../services/supabaseService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
 import FollowButton from '../components/FollowButton';
@@ -27,7 +29,14 @@ const FollowersPage = ({ currentUser }) => {
 
   const fetchUserData = async () => {
     try {
-      const result = await getUserData(userId);
+      // Try Supabase first, fallback to LocalStorage
+      let result;
+      try {
+        result = await supabaseService.getUserData(userId);
+      } catch (error) {
+        result = localStorageFix.loadUserData(userId);
+      }
+      
       if (result.success) {
         setUserData(result.data);
       } else {
