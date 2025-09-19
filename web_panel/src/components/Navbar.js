@@ -260,8 +260,9 @@ const Navbar = ({ user, darkMode, toggleDarkMode, openChatManager }) => {
             </div>
           </div>
         )}
-      </div>
-    </nav>
+        </div>
+      </nav>
+    </>
   );
 };
 

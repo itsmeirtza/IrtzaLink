@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { CheckBadgeIcon, SparklesIcon, StarIcon, PhoneIcon, EnvelopeIcon, ShieldCheckIcon, TrophyIcon, EyeIcon, UserGroupIcon, BoltIcon, GiftIcon, CrownIcon } from '@heroicons/react/24/solid';
+import { CheckBadgeIcon, SparklesIcon, StarIcon, PhoneIcon, EnvelopeIcon, ShieldCheckIcon, TrophyIcon, EyeIcon, UserGroupIcon, BoltIcon, GiftIcon } from '@heroicons/react/24/solid';
 import { motion } from 'framer-motion';
 import { AuthContext } from '../App';
 import { isVerifiedUser } from '../config/verifiedAccounts';
@@ -45,7 +45,7 @@ const GetVerified = ({ user }) => {
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 40px rgba(59, 130, 246, 0.3)'
                   }}
                 >
-                  <CrownIcon className="w-16 h-16 text-yellow-300 drop-shadow-lg" />
+                  <TrophyIcon className="w-16 h-16 text-yellow-300 drop-shadow-lg" />
                 </motion.div>
               </div>
             </motion.div>
@@ -100,7 +100,7 @@ const GetVerified = ({ user }) => {
                 color: "from-yellow-500 to-orange-500"
               },
               {
-                icon: <CrownIcon className="w-8 h-8" />,
+                icon: <TrophyIcon className="w-8 h-8" />,
                 title: "Premium Status",
                 description: "You're part of the exclusive verified community",
                 color: "from-purple-500 to-pink-500"
