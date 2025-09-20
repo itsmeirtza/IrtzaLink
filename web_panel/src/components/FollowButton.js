@@ -85,6 +85,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
         // Save to persistent storage
         followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
         
+        // Force re-check to ensure UI consistency
+        setTimeout(() => {
+          checkRelationship();
+        }, 500);
+        
         if (onFollowChange) onFollowChange();
       } else {
         // Revert optimistic update on failure
@@ -103,6 +108,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
           color: 'white',
         },
       });
+      
+      // Force re-check to ensure UI consistency
+      setTimeout(() => {
+        checkRelationship();
+      }, 500);
       
       if (onFollowChange) onFollowChange();
     } finally {
@@ -134,6 +144,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
         // Save to persistent storage
         followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
         
+        // Force re-check to ensure UI consistency
+        setTimeout(() => {
+          checkRelationship();
+        }, 500);
+        
         if (onFollowChange) onFollowChange();
       } else {
         // Revert optimistic update on failure
@@ -152,6 +167,11 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
           color: 'white',
         },
       });
+      
+      // Force re-check to ensure UI consistency
+      setTimeout(() => {
+        checkRelationship();
+      }, 500);
       
       if (onFollowChange) onFollowChange();
     } finally {

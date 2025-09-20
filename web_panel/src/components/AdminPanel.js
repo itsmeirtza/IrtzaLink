@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { resetUsernameChangeForAllUsers } from '../services/firebase';
 import toast from 'react-hot-toast';
-import { UserIcon, ClockIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon, KeyIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ClockIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon, KeyIcon, EnvelopeIcon, CheckBadgeIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { getVerifiedUsernames, addVerifiedUsername, removeVerifiedUsername } from '../config/verifiedAccounts';
 
 const AdminPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
@@ -479,14 +480,171 @@ const AdminPanel = ({ user }) => {
           )}
         </div>
 
-        {/* Future admin functions can be added here */}
+        {/* Verified User Management Section */}
+        <VerifiedUserManagement />
+        
+        {/* Future admin functions */}
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             More Admin Functions Coming Soon
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            Additional administrative features will be added here as needed.
+            User analytics, content moderation, system monitoring, and more.
           </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Verified User Management Component
+const VerifiedUserManagement = () => {
+  const [verifiedUsers, setVerifiedUsers] = useState([]);
+  const [newUsername, setNewUsername] = useState('');
+  const [isAddingUser, setIsAddingUser] = useState(false);
+
+  useEffect(() => {
+    // Load verified users on component mount
+    setVerifiedUsers(getVerifiedUsernames());
+  }, []);
+
+  const handleAddUser = async () => {
+    if (!newUsername.trim()) {
+      toast.error('Please enter a username');
+      return;
+    }
+
+    setIsAddingUser(true);
+    try {
+      const success = addVerifiedUsername(newUsername.trim());
+      if (success) {
+        setVerifiedUsers(getVerifiedUsernames());
+        setNewUsername('');
+        toast.success(`@${newUsername} has been verified successfully! ✅`);
+      } else {
+        toast.error('Username is already verified');
+      }
+    } catch (error) {
+      toast.error('Failed to add verified user');
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
+  const handleRemoveUser = async (username) => {
+    if (!window.confirm(`Are you sure you want to remove verification from @${username}?`)) {
+      return;
+    }
+
+    try {
+      const success = removeVerifiedUsername(username);
+      if (success) {
+        setVerifiedUsers(getVerifiedUsernames());
+        toast.success(`Verification removed from @${username}`);
+      } else {
+        toast.error('Failed to remove user verification');
+      }
+    } catch (error) {
+      toast.error('Failed to remove verified user');
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-800/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-6">
+      <div className="flex items-center mb-4">
+        <CheckBadgeIcon className="w-6 h-6 text-purple-500 mr-3" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Verified User Management
+        </h3>
+        <div className="ml-auto bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+          {verifiedUsers.length} Verified
+        </div>
+      </div>
+      
+      <p className="text-gray-600 dark:text-gray-400 mb-6">
+        Manage verified users and their blue checkmark badges. Add or remove verification status for any user.
+      </p>
+      
+      {/* Add New Verified User */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6">
+        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+          Add New Verified User
+        </h4>
+        <div className="flex items-center space-x-3">
+          <div className="flex-1 relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-500 dark:text-gray-400 sm:text-sm">@</span>
+            </div>
+            <input
+              type="text"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              placeholder="Enter username"
+              className="input-field pl-8"
+              onKeyPress={(e) => e.key === 'Enter' && handleAddUser()}
+            />
+          </div>
+          <button
+            onClick={handleAddUser}
+            disabled={isAddingUser || !newUsername.trim()}
+            className="btn-primary flex items-center space-x-2 px-4 py-2"
+          >
+            {isAddingUser ? (
+              <ArrowPathIcon className="w-4 h-4 animate-spin" />
+            ) : (
+              <PlusIcon className="w-4 h-4" />
+            )}
+            <span>{isAddingUser ? 'Adding...' : 'Add User'}</span>
+          </button>
+        </div>
+      </div>
+      
+      {/* Current Verified Users */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+          Current Verified Users
+        </h4>
+        
+        {verifiedUsers.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+            No verified users yet
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {verifiedUsers.map((username, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+              >
+                <div className="flex items-center space-x-2">
+                  <CheckBadgeIcon className="w-5 h-5 text-blue-500" />
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    @{username}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleRemoveUser(username)}
+                  className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
+                  title="Remove verification"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-start">
+          <CheckBadgeIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-2" />
+          <div>
+            <h5 className="text-sm font-medium text-blue-800 dark:text-blue-300">How Verification Works</h5>
+            <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+              Adding a username here will immediately show a blue checkmark next to their name across the entire platform. 
+              Users will see their verified status on their profile and in search results.
+            </p>
+          </div>
         </div>
       </div>
     </div>
