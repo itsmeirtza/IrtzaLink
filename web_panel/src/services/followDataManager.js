@@ -219,6 +219,55 @@ class FollowDataManager {
     }, 21600000); // 6 hours
   }
 
+  // Clear specific follow relationship (force refresh)
+  clearFollowRelationship(userId, targetUserId) {
+    try {
+      const key = `irtzalink_follow_${userId}_${targetUserId}`;
+      const cacheKey = `${userId}_${targetUserId}`;
+      
+      // Clear from localStorage
+      localStorage.removeItem(key);
+      
+      // Clear from memory cache
+      this.followCache.delete(cacheKey);
+      
+      console.log(`Cleared cached follow relationship: ${userId} -> ${targetUserId}`);
+    } catch (error) {
+      console.error('Error clearing follow relationship:', error);
+    }
+  }
+  
+  // Clear all follow data for a user
+  clearAllFollowDataForUser(userId) {
+    try {
+      const keysToRemove = [];
+      
+      // Clear from localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes(`_${userId}_`) || key.includes(`_${userId}`))) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Clear from memory cache
+      const cacheKeysToRemove = [];
+      for (const cacheKey of this.followCache.keys()) {
+        if (cacheKey.includes(userId)) {
+          cacheKeysToRemove.push(cacheKey);
+        }
+      }
+      
+      cacheKeysToRemove.forEach(key => this.followCache.delete(key));
+      
+      console.log(`Cleared all follow data for user: ${userId}`);
+    } catch (error) {
+      console.error('Error clearing user follow data:', error);
+    }
+  }
+
   // Get storage usage statistics
   getStorageStats() {
     let followDataSize = 0;

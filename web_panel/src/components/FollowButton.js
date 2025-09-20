@@ -13,9 +13,19 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  // Force refresh function
+  const forceRefresh = async () => {
+    console.log('🔄 Force refreshing follow relationship...');
+    // Clear cache first
+    followDataManager.clearFollowRelationship(currentUser.uid, targetUser.uid);
+    // Then check from server
+    await checkRelationship();
+  };
+
   useEffect(() => {
     if (currentUser && targetUser && currentUser.uid !== targetUser.uid) {
-      checkRelationship();
+      // Always do a force refresh on mount to get latest data
+      forceRefresh();
     } else {
       setRelationship('none');
       setChecking(false);
@@ -25,36 +35,34 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
   const checkRelationship = async () => {
     setChecking(true);
     try {
-      // First try to load from persistent storage
-      const cachedRelationship = followDataManager.loadFollowRelationship(currentUser.uid, targetUser.uid);
-      if (cachedRelationship) {
-        setRelationship(cachedRelationship);
-        setChecking(false);
-        
-        // Still check server in background for accuracy
-        getFollowRelationship(currentUser.uid, targetUser.uid).then(result => {
-          if (result.success && result.relationship !== cachedRelationship) {
-            setRelationship(result.relationship);
-            followDataManager.saveFollowRelationship(currentUser.uid, targetUser.uid, result.relationship);
-          }
-        }).catch(() => {});
-        
-        return;
-      }
+      console.log('🔍 Checking relationship between:', currentUser.uid, 'and', targetUser.uid);
       
-      // If no cached data, fetch from server
+      // Always fetch from server for real-time accuracy
       const result = await getFollowRelationship(currentUser.uid, targetUser.uid);
       if (result.success) {
+        console.log('✅ Server relationship:', result.relationship);
         setRelationship(result.relationship);
-        // Save to persistent storage
+        
+        // Save to cache for backup only
         followDataManager.saveFollowRelationship(currentUser.uid, targetUser.uid, result.relationship);
+      } else {
+        console.log('❌ Failed to get relationship:', result.error);
+        // Only use cache as absolute fallback
+        const cachedRelationship = followDataManager.loadFollowRelationship(currentUser.uid, targetUser.uid);
+        if (cachedRelationship) {
+          console.log('📦 Using cached relationship:', cachedRelationship);
+          setRelationship(cachedRelationship);
+        }
       }
     } catch (error) {
-      console.error('Error checking relationship:', error);
-      // Try to use cached data as fallback
+      console.error('❌ Error checking relationship:', error);
+      // Last resort: try cached data
       const cachedRelationship = followDataManager.loadFollowRelationship(currentUser.uid, targetUser.uid);
       if (cachedRelationship) {
+        console.log('🆘 Emergency cache fallback:', cachedRelationship);
         setRelationship(cachedRelationship);
+      } else {
+        setRelationship('none'); // Default fallback
       }
     } finally {
       setChecking(false);
@@ -65,15 +73,19 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
     if (loading) return; // Prevent double clicks
     
     setLoading(true);
-    
-    // Optimistic update for instant UI response (Instagram-like)
-    const previousRelationship = relationship;
-    const newRelationship = 'following';
-    setRelationship(newRelationship);
+    console.log('🚀 Following user:', targetUser.username);
     
     try {
       const result = await followUser(currentUser.uid, targetUser.uid);
       if (result.success) {
+        console.log('✅ Follow successful!');
+        
+        // Immediately update UI state
+        setRelationship('following');
+        
+        // Save to cache
+        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, 'following');
+        
         toast.success(`Started following @${targetUser.username}`, {
           icon: '🚀',
           style: {
@@ -82,25 +94,26 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
           },
         });
         
-        // Save to persistent storage
-        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
-        
-        // Force re-check to ensure UI consistency
-        setTimeout(() => {
-          checkRelationship();
-        }, 500);
+        // Force server check after a short delay to ensure consistency
+        setTimeout(async () => {
+          await checkRelationship();
+        }, 1000);
         
         if (onFollowChange) onFollowChange();
       } else {
-        // Revert optimistic update on failure
-        setRelationship(previousRelationship);
+        console.log('❌ Follow failed:', result.error);
         toast.error(result.error || 'Failed to follow user');
+        
+        // Refresh to get correct state
+        await checkRelationship();
       }
     } catch (error) {
-      console.error('Error following user:', error);
+      console.error('❌ Error following user:', error);
       
-      // Keep optimistic update but show friendly message
-      followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
+      // Show error but still update optimistically
+      setRelationship('following');
+      followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, 'following');
+      
       toast.success(`Following @${targetUser.username} ✨`, {
         icon: '🌟',
         style: {
@@ -108,11 +121,6 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
           color: 'white',
         },
       });
-      
-      // Force re-check to ensure UI consistency
-      setTimeout(() => {
-        checkRelationship();
-      }, 500);
       
       if (onFollowChange) onFollowChange();
     } finally {
@@ -124,15 +132,19 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
     if (loading) return; // Prevent double clicks
     
     setLoading(true);
-    
-    // Optimistic update for instant UI response (Instagram-like)
-    const previousRelationship = relationship;
-    const newRelationship = 'none';
-    setRelationship(newRelationship);
+    console.log('👋 Unfollowing user:', targetUser.username);
     
     try {
       const result = await unfollowUser(currentUser.uid, targetUser.uid);
       if (result.success) {
+        console.log('✅ Unfollow successful!');
+        
+        // Immediately update UI state
+        setRelationship('none');
+        
+        // Save to cache
+        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, 'none');
+        
         toast.success(`Unfollowed @${targetUser.username}`, {
           icon: '👋',
           style: {
@@ -141,25 +153,26 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
           },
         });
         
-        // Save to persistent storage
-        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
-        
-        // Force re-check to ensure UI consistency
-        setTimeout(() => {
-          checkRelationship();
-        }, 500);
+        // Force server check after a short delay to ensure consistency
+        setTimeout(async () => {
+          await checkRelationship();
+        }, 1000);
         
         if (onFollowChange) onFollowChange();
       } else {
-        // Revert optimistic update on failure
-        setRelationship(previousRelationship);
+        console.log('❌ Unfollow failed:', result.error);
         toast.error('Failed to unfollow user');
+        
+        // Refresh to get correct state
+        await checkRelationship();
       }
     } catch (error) {
-      console.error('Error unfollowing user:', error);
+      console.error('❌ Error unfollowing user:', error);
       
-      // Keep optimistic update but show friendly message
-      followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
+      // Show error but still update optimistically
+      setRelationship('none');
+      followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, 'none');
+      
       toast.success(`Unfollowed @${targetUser.username}`, {
         icon: '🙏',
         style: {
@@ -167,11 +180,6 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
           color: 'white',
         },
       });
-      
-      // Force re-check to ensure UI consistency
-      setTimeout(() => {
-        checkRelationship();
-      }, 500);
       
       if (onFollowChange) onFollowChange();
     } finally {
