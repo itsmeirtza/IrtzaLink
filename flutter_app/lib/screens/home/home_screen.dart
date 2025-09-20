@@ -6,10 +6,11 @@ import '../../services/user_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/theme_switcher.dart';
 import '../../utils/design_system.dart';
-import '../profile/modern_profile_screen.dart';
+import '../profile/profile_screen.dart';
 import '../qr/qr_screen.dart';
 import '../settings/settings_screen.dart';
 import '../links/links_screen.dart';
+import '../analytics/analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -89,14 +90,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ? TextField(
                     controller: _searchController,
                     autofocus: true,
-                    decoration: DesignSystem.getInputDecoration(
-                      label: '',
-                      hint: 'Search users...',
-                      isDark: Theme.of(context).brightness == Brightness.dark,
-                    ).copyWith(
+                    decoration: const InputDecoration(
                       border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
+                      hintText: 'Search users...',
                     ),
                     style: TextStyle(
                       color: Theme.of(context).brightness == Brightness.dark 
@@ -112,7 +108,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         backgroundImage: user?.photoURL != null 
                             ? CachedNetworkImageProvider(user!.photoURL!) 
                             : null,
-                        backgroundColor: DesignSystem.primaryBlue,
+                        backgroundColor: Colors.blue,
                         child: user?.photoURL == null 
                             ? const Icon(Icons.person, color: Colors.white, size: 18) 
                             : null,
@@ -123,22 +119,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            const Text(
                               'IrtzaLink',
-                              style: DesignSystem.headingSmall.copyWith(
-                                color: Theme.of(context).brightness == Brightness.dark 
-                                    ? Colors.white 
-                                    : Colors.black,
-                              ),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             if (userData?['username'] != null)
                               Text(
                                 '@${userData!['username']}',
-                                style: DesignSystem.bodySmall.copyWith(
-                                  color: Theme.of(context).brightness == Brightness.dark 
-                                      ? Colors.white70 
-                                      : Colors.black54,
-                                ),
+                                style: const TextStyle(fontSize: 14, color: Colors.grey),
                               ),
                           ],
                         ),
@@ -147,18 +135,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
             elevation: 0,
             backgroundColor: Colors.transparent,
-        leading: _isSearching 
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() {
-                    _isSearching = false;
-                    _searchController.clear();
-                    _searchResults.clear();
-                  });
-                },
-              )
-            : null,
+            leading: _isSearching 
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      setState(() {
+                        _isSearching = false;
+                        _searchController.clear();
+                        _searchResults.clear();
+                      });
+                    },
+                  )
+                : null,
             actions: [
               if (!_isSearching) ...[
                 IconButton(
@@ -175,234 +163,225 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: const Icon(Icons.notifications_outlined),
                   onPressed: () => _showNotifications(context),
                 ),
-            PopupMenuButton(
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'admin',
-                  child: Row(
-                    children: [
-                      Icon(Icons.admin_panel_settings, size: 20),
-                      SizedBox(width: 8),
-                      Text('Admin Panel'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'settings',
-                  child: Row(
-                    children: [
-                      Icon(Icons.settings, size: 20),
-                      SizedBox(width: 8),
-                      Text('Settings'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, size: 20),
-                      SizedBox(width: 8),
-                      Text('Logout'),
-                    ],
-                  ),
-                ),
-              ],
-              onSelected: (value) {
-                switch (value) {
-                  case 'admin':
-                    _showAdminPanel(context);
-                    break;
-                  case 'settings':
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                    );
-                    break;
-                  case 'logout':
-                    _showLogoutDialog(context);
-                    break;
-                }
-              },
-            ),
-          ],
-        ],
-      ),
-      body: _isSearching && _searchResults.isNotEmpty
-          ? _buildSearchResults()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Welcome Section
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                PopupMenuButton(
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'admin',
                       child: Row(
                         children: [
-                          Consumer<AuthService>(
-                            builder: (context, authService, child) {
-                              final user = authService.user;
-                              final userData = authService.userData;
-                              
-                              return Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 30,
-                                    backgroundColor: Colors.blue,
-                                    backgroundImage: user?.photoURL != null 
-                                        ? NetworkImage(user!.photoURL!) 
-                                        : null,
-                                    child: user?.photoURL == null 
-                                        ? Icon(
-                                            Icons.person, 
-                                            size: 30, 
-                                            color: Colors.white,
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Welcome back, ${userData?['displayName'] ?? user?.displayName ?? 'User'}!',
-                                          style: Theme.of(context).textTheme.titleLarge,
-                                        ),
-                                        Text(
-                                          userData?['username'] != null 
-                                              ? '@${userData!['username']}' 
-                                              : user?.email ?? 'Manage your personal links',
-                                          style: Theme.of(context).textTheme.bodyMedium,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
+                          Icon(Icons.admin_panel_settings, size: 20),
+                          SizedBox(width: 8),
+                          Text('Admin Panel'),
                         ],
                       ),
                     ),
-                  ),
-            const SizedBox(height: 20),
-            
-            // Quick Stats
-            const Text(
-              'Quick Stats',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Profile Views',
-                    '1,234',
-                    Icons.visibility,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'QR Scans',
-                    '567',
-                    Icons.qr_code_scanner,
-                    Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Total Links',
-                    '8',
-                    Icons.link,
-                    Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Link Clicks',
-                    '2,891',
-                    Icons.mouse,
-                    Colors.purple,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            // Quick Actions
-            const Text(
-              'Quick Actions',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.5,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              children: [
-                _buildActionCard(
-                  context,
-                  'Edit Profile',
-                  Icons.edit,
-                  Colors.blue,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                  ),
-                ),
-                _buildActionCard(
-                  context,
-                  'View QR Code',
-                  Icons.qr_code,
-                  Colors.green,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const QRScreen()),
-                  ),
-                ),
-                _buildActionCard(
-                  context,
-                  'Share Profile',
-                  Icons.share,
-                  Colors.orange,
-                  () {
-                    // TODO: Implement share functionality
+                    const PopupMenuItem(
+                      value: 'settings',
+                      child: Row(
+                        children: [
+                          Icon(Icons.settings, size: 20),
+                          SizedBox(width: 8),
+                          Text('Settings'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, size: 20),
+                          SizedBox(width: 8),
+                          Text('Logout'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'admin':
+                        _showAdminPanel(context);
+                        break;
+                      case 'settings':
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                        );
+                        break;
+                      case 'logout':
+                        _showLogoutDialog(context);
+                        break;
+                    }
                   },
                 ),
-                _buildActionCard(
-                  context,
-                  'Analytics',
-                  Icons.analytics,
-                  Colors.purple,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
+              ],
+            ],
+          ),
+          body: _isSearching && _searchResults.isNotEmpty
+              ? _buildSearchResults()
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Welcome Section
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.blue,
+                                backgroundImage: user?.photoURL != null 
+                                    ? NetworkImage(user!.photoURL!) 
+                                    : null,
+                                child: user?.photoURL == null 
+                                    ? const Icon(
+                                        Icons.person, 
+                                        size: 30, 
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome back, ${userData?['displayName'] ?? user?.displayName ?? 'User'}!',
+                                      style: Theme.of(context).textTheme.titleLarge,
+                                    ),
+                                    Text(
+                                      userData?['username'] != null 
+                                          ? '@${userData!['username']}' 
+                                          : user?.email ?? 'Manage your personal links',
+                                      style: Theme.of(context).textTheme.bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Quick Stats
+                      const Text(
+                        'Quick Stats',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              'Profile Views',
+                              '1,234',
+                              Icons.visibility,
+                              Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              'QR Scans',
+                              '567',
+                              Icons.qr_code_scanner,
+                              Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              'Total Links',
+                              '8',
+                              Icons.link,
+                              Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              'Link Clicks',
+                              '2,891',
+                              Icons.mouse,
+                              Colors.purple,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Quick Actions
+                      const Text(
+                        'Quick Actions',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: 1.5,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        children: [
+                          _buildActionCard(
+                            context,
+                            'Edit Profile',
+                            Icons.edit,
+                            Colors.blue,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                            ),
+                          ),
+                          _buildActionCard(
+                            context,
+                            'View QR Code',
+                            Icons.qr_code,
+                            Colors.green,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const QRScreen()),
+                            ),
+                          ),
+                          _buildActionCard(
+                            context,
+                            'Share Profile',
+                            Icons.share,
+                            Colors.orange,
+                            () {
+                              // TODO: Implement share functionality
+                            },
+                          ),
+                          _buildActionCard(
+                            context,
+                            'Analytics',
+                            Icons.analytics,
+                            Colors.purple,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-                ],
-              ),
-            ),
+        );
+      },
     );
   }
 

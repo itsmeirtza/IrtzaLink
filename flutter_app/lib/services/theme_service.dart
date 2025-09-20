@@ -25,6 +25,14 @@ class ThemeService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> toggleTheme() async {
+    if (_themeMode == ThemeMode.light) {
+      await setTheme(ThemeMode.dark);
+    } else {
+      await setTheme(ThemeMode.light);
+    }
+  }
+
   bool get isDarkMode => _themeMode == ThemeMode.dark;
   bool get isLightMode => _themeMode == ThemeMode.light;
   bool get isSystemMode => _themeMode == ThemeMode.system;
