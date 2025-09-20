@@ -53,25 +53,34 @@ class AuthService extends ChangeNotifier {
     }
     
     _user = user;
-    _isLoading = true;
-    notifyListeners();
-
+    
+    // Don't set loading to true if user is null (prevents login stuck)
     if (user != null) {
-      // User signed in, load their data with caching
-      await _loadUserDataWithCache(user.uid);
+      _isLoading = true;
+      notifyListeners();
       
-      // Setup offline data persistence
-      await _setupOfflineDataSync(user.uid);
+      try {
+        // User signed in, load their data with caching
+        await _loadUserDataWithCache(user.uid);
+        
+        // Setup offline data persistence
+        await _setupOfflineDataSync(user.uid);
+        
+        print('✅ User authentication complete for ${user.uid.substring(0, 8)}, ready to show home screen');
+      } catch (e) {
+        print('❌ Error in user data loading: $e');
+        // Don't fail login if user data loading fails
+      }
       
-      print('✅ User authentication complete for ${user.uid.substring(0, 8)}, ready to show home screen');
+      _isLoading = false;
+      notifyListeners();
     } else {
       // User signed out, clear memory but keep cache
       _userData = null;
+      _isLoading = false;
       print('🔐 Auth state changed: user signed out, memory cleared but cache preserved');
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   // Load user data with caching support

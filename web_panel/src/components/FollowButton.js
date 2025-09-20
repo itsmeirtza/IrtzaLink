@@ -62,30 +62,48 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
   };
 
   const handleFollow = async () => {
+    if (loading) return; // Prevent double clicks
+    
     setLoading(true);
+    
+    // Optimistic update for instant UI response (Instagram-like)
+    const previousRelationship = relationship;
+    const newRelationship = 'following';
+    setRelationship(newRelationship);
+    
     try {
       const result = await followUser(currentUser.uid, targetUser.uid);
       if (result.success) {
-        toast.success(`Started following @${targetUser.username}`);
-        
-        // Update relationship immediately for better UX
-        const newRelationship = 'following';
-        setRelationship(newRelationship);
+        toast.success(`Started following @${targetUser.username}`, {
+          icon: '🚀',
+          style: {
+            background: 'linear-gradient(45deg, #3B82F6, #8B5CF6)',
+            color: 'white',
+          },
+        });
         
         // Save to persistent storage
         followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
         
         if (onFollowChange) onFollowChange();
       } else {
+        // Revert optimistic update on failure
+        setRelationship(previousRelationship);
         toast.error(result.error || 'Failed to follow user');
       }
     } catch (error) {
       console.error('Error following user:', error);
-      // Still save optimistically to cache
-      const newRelationship = 'following';
-      setRelationship(newRelationship);
+      
+      // Keep optimistic update but show friendly message
       followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
-      toast.success(`Following @${targetUser.username} (will sync when online)`);
+      toast.success(`Following @${targetUser.username} ✨`, {
+        icon: '🌟',
+        style: {
+          background: 'linear-gradient(45deg, #10B981, #3B82F6)',
+          color: 'white',
+        },
+      });
+      
       if (onFollowChange) onFollowChange();
     } finally {
       setLoading(false);
@@ -93,30 +111,48 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
   };
 
   const handleUnfollow = async () => {
+    if (loading) return; // Prevent double clicks
+    
     setLoading(true);
+    
+    // Optimistic update for instant UI response (Instagram-like)
+    const previousRelationship = relationship;
+    const newRelationship = 'none';
+    setRelationship(newRelationship);
+    
     try {
       const result = await unfollowUser(currentUser.uid, targetUser.uid);
       if (result.success) {
-        toast.success(`Unfollowed @${targetUser.username}`);
-        
-        // Update relationship immediately
-        const newRelationship = 'none';
-        setRelationship(newRelationship);
+        toast.success(`Unfollowed @${targetUser.username}`, {
+          icon: '👋',
+          style: {
+            background: 'linear-gradient(45deg, #6B7280, #374151)',
+            color: 'white',
+          },
+        });
         
         // Save to persistent storage
         followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
         
         if (onFollowChange) onFollowChange();
       } else {
+        // Revert optimistic update on failure
+        setRelationship(previousRelationship);
         toast.error('Failed to unfollow user');
       }
     } catch (error) {
       console.error('Error unfollowing user:', error);
-      // Still save optimistically to cache
-      const newRelationship = 'none';
-      setRelationship(newRelationship);
+      
+      // Keep optimistic update but show friendly message
       followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, newRelationship);
-      toast.success(`Unfollowed @${targetUser.username} (will sync when online)`);
+      toast.success(`Unfollowed @${targetUser.username}`, {
+        icon: '🙏',
+        style: {
+          background: 'linear-gradient(45deg, #6B7280, #374151)',
+          color: 'white',
+        },
+      });
+      
       if (onFollowChange) onFollowChange();
     } finally {
       setLoading(false);

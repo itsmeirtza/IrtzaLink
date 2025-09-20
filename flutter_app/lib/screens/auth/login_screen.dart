@@ -122,24 +122,47 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final userService = Provider.of<UserService>(context, listen: false);
       
       final credential = await authService.signInWithEmailAndPassword(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
       
       if (mounted && credential != null) {
-        // Initialize user data after successful sign in
-        await userService.initializeUser();
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         
-        // Don't navigate manually, let AuthWrapper handle it
-        // The AuthWrapper will automatically show HomeScreen when isAuthenticated becomes true
+        // Clear form
+        _emailController.clear();
+        _passwordController.clear();
+        
+        // AuthWrapper will automatically navigate to HomeScreen
+        // No manual navigation needed
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Login failed';
+        
+        if (e.toString().contains('user-not-found')) {
+          errorMessage = 'No user found with this email';
+        } else if (e.toString().contains('wrong-password')) {
+          errorMessage = 'Incorrect password';
+        } else if (e.toString().contains('invalid-email')) {
+          errorMessage = 'Invalid email format';
+        } else if (e.toString().contains('network-request-failed')) {
+          errorMessage = 'Network error. Please check your connection';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -152,21 +175,44 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final userService = Provider.of<UserService>(context, listen: false);
       
       final credential = await authService.signInWithGoogle();
       
       if (mounted && credential != null) {
-        // Initialize user data after successful sign in
-        await userService.initializeUser();
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google sign-in successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         
-        // Don't navigate manually, let AuthWrapper handle it
-        // The AuthWrapper will automatically show HomeScreen when isAuthenticated becomes true
+        // AuthWrapper will automatically navigate to HomeScreen
+        // No manual navigation needed
+      } else if (mounted) {
+        // User cancelled sign-in
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sign-in cancelled'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Google sign-in failed';
+        
+        if (e.toString().contains('network-request-failed')) {
+          errorMessage = 'Network error. Please check your connection';
+        } else if (e.toString().contains('sign_in_failed')) {
+          errorMessage = 'Sign-in failed. Please try again';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google sign-in failed: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
