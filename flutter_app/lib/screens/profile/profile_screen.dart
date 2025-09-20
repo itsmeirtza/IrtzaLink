@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/user_service.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/theme_switcher.dart';
 import '../../services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {

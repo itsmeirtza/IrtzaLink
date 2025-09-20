@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/user_service.dart';
 import '../../services/auth_service.dart';
-import '../profile/profile_screen.dart';
+import '../../widgets/theme_switcher.dart';
+import '../../utils/design_system.dart';
+import '../profile/modern_profile_screen.dart';
 import '../qr/qr_screen.dart';
 import '../settings/settings_screen.dart';
 import '../links/links_screen.dart';
-import '../analytics/analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -23,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
     const DashboardScreen(),
     const LinksScreen(),
     const QRScreen(),
-    const AnalyticsScreen(),
     const ProfileScreen(),
   ];
 
@@ -54,10 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'QR Code',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
           ),
@@ -81,22 +78,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: _isSearching 
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Search users...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.white70),
-                ),
-                style: const TextStyle(color: Colors.white),
-                onChanged: _performSearch,
-              )
-            : const Text('IrtzaLink Dashboard'),
-        elevation: 0,
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        final user = authService.user;
+        final userData = authService.userData;
+        
+        return Scaffold(
+          appBar: AppBar(
+            title: _isSearching 
+                ? TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    decoration: DesignSystem.getInputDecoration(
+                      label: '',
+                      hint: 'Search users...',
+                      isDark: Theme.of(context).brightness == Brightness.dark,
+                    ).copyWith(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                    ),
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.white 
+                          : Colors.black,
+                    ),
+                    onChanged: _performSearch,
+                  )
+                : Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundImage: user?.photoURL != null 
+                            ? CachedNetworkImageProvider(user!.photoURL!) 
+                            : null,
+                        backgroundColor: DesignSystem.primaryBlue,
+                        child: user?.photoURL == null 
+                            ? const Icon(Icons.person, color: Colors.white, size: 18) 
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'IrtzaLink',
+                              style: DesignSystem.headingSmall.copyWith(
+                                color: Theme.of(context).brightness == Brightness.dark 
+                                    ? Colors.white 
+                                    : Colors.black,
+                              ),
+                            ),
+                            if (userData?['username'] != null)
+                              Text(
+                                '@${userData!['username']}',
+                                style: DesignSystem.bodySmall.copyWith(
+                                  color: Theme.of(context).brightness == Brightness.dark 
+                                      ? Colors.white70 
+                                      : Colors.black54,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
         leading: _isSearching 
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -109,20 +159,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
               )
             : null,
-        actions: [
-          if (!_isSearching) ...[
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                setState(() {
-                  _isSearching = true;
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.notifications),
-              onPressed: () => _showNotifications(context),
-            ),
+            actions: [
+              if (!_isSearching) ...[
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () {
+                    setState(() {
+                      _isSearching = true;
+                    });
+                  },
+                ),
+                const CompactThemeSwitcher(),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () => _showNotifications(context),
+                ),
             PopupMenuButton(
               itemBuilder: (context) => [
                 const PopupMenuItem(
@@ -189,26 +241,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
                         children: [
-                          const CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.blue,
-                            child: Icon(Icons.person, size: 30, color: Colors.white),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Welcome back, Demo User!',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                Text(
-                                  'Manage your personal links',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
+                          Consumer<AuthService>(
+                            builder: (context, authService, child) {
+                              final user = authService.user;
+                              final userData = authService.userData;
+                              
+                              return Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: Colors.blue,
+                                    backgroundImage: user?.photoURL != null 
+                                        ? NetworkImage(user!.photoURL!) 
+                                        : null,
+                                    child: user?.photoURL == null 
+                                        ? Icon(
+                                            Icons.person, 
+                                            size: 30, 
+                                            color: Colors.white,
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Welcome back, ${userData?['displayName'] ?? user?.displayName ?? 'User'}!',
+                                          style: Theme.of(context).textTheme.titleLarge,
+                                        ),
+                                        Text(
+                                          userData?['username'] != null 
+                                              ? '@${userData!['username']}' 
+                                              : user?.email ?? 'Manage your personal links',
+                                          style: Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -571,9 +645,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Logout logic here
+              // Real logout using AuthService
+              final authService = Provider.of<AuthService>(context, listen: false);
+              await authService.signOut();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
