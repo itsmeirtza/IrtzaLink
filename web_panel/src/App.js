@@ -25,7 +25,6 @@ import PublicUserProfile from './pages/PublicUserProfile';
 import ContactUs from './pages/ContactUs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import AboutUs from './pages/AboutUs';
-import FollowTest from './pages/FollowTest';
 import FollowersPage from './pages/FollowersPage';
 import FollowingPage from './pages/FollowingPage';
 
@@ -225,7 +224,6 @@ return (
                 <Route path="/analytics" element={<Analytics user={user} />} />
                 <Route path="/settings" element={<Settings user={user} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
                 <Route path="/admin" element={<Admin user={user} />} />
-                <Route path="/follow-test" element={<FollowTest user={user} />} />
                 <Route path="/user/:userId" element={<PublicUserProfile currentUser={user} />} />
                 <Route path="/user/:userId/followers" element={<FollowersPage currentUser={user} />} />
                 <Route path="/user/:userId/following" element={<FollowingPage currentUser={user} />} />
