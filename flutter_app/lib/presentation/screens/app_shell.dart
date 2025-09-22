@@ -299,14 +299,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.people),
-                title: const Text('Follow Test'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Navigate to follow test
-                },
-              ),
-              ListTile(
                 leading: const Icon(Icons.group),
                 title: const Text('Followers'),
                 onTap: () {

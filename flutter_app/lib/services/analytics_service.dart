@@ -104,9 +104,9 @@ class AnalyticsService extends ChangeNotifier {
       
     } catch (e) {
       debugPrint('Error loading chart data: $e');
-      // Fallback to demo data
-      _profileViewsData = _getDemoProfileViewsData();
-      _qrScansData = _getDemoQRScansData();
+      // No demo fallback in production builds
+      _profileViewsData = [];
+      _qrScansData = [];
     }
   }
   
@@ -162,36 +162,19 @@ class AnalyticsService extends ChangeNotifier {
       
     } catch (e) {
       debugPrint('Error loading link clicks: $e');
-      _linkClicks = _getDemoLinkClicks();
+      _linkClicks = [];
     }
   }
   
-  // Load demographics data (demo data for now)
+  // Load demographics data (disabled demo in production)
   void _loadDemographics() {
-    _topCountries = [
-      {'name': 'Pakistan', 'flag': '🇵🇰', 'percentage': 45},
-      {'name': 'United States', 'flag': '🇺🇸', 'percentage': 23},
-      {'name': 'United Kingdom', 'flag': '🇬🇧', 'percentage': 12},
-      {'name': 'Canada', 'flag': '🇨🇦', 'percentage': 8},
-      {'name': 'India', 'flag': '🇮🇳', 'percentage': 12},
-    ];
-    
-    _deviceTypes = [
-      {'name': 'Mobile', 'icon': Icons.phone_android, 'percentage': 68},
-      {'name': 'Desktop', 'icon': Icons.computer, 'percentage': 25},
-      {'name': 'Tablet', 'icon': Icons.tablet, 'percentage': 7},
-    ];
+    _topCountries = [];
+    _deviceTypes = [];
   }
   
-  // Load referrers data (demo data for now)
+  // Load referrers data (disabled demo in production)
   void _loadReferrers() {
-    _topReferrers = [
-      {'source': 'Direct', 'icon': Icons.link, 'visits': 156},
-      {'source': 'WhatsApp', 'icon': Icons.message, 'visits': 89},
-      {'source': 'Instagram', 'icon': Icons.camera_alt, 'visits': 67},
-      {'source': 'Facebook', 'icon': Icons.facebook, 'visits': 45},
-      {'source': 'QR Code', 'icon': Icons.qr_code, 'visits': 34},
-    ];
+    _topReferrers = [];
   }
   
   // Load recent activity
@@ -234,7 +217,7 @@ class AnalyticsService extends ChangeNotifier {
       
     } catch (e) {
       debugPrint('Error loading recent activity: $e');
-      _recentActivity = _getDemoRecentActivity();
+      _recentActivity = [];
     }
   }
   
