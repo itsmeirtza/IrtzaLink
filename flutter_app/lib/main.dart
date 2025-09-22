@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
 import 'services/theme_service.dart';
+import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -14,7 +17,11 @@ import 'utils/app_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
   await Firebase.initializeApp();
+  // Initialize Supabase if configured
+  await SupabaseService.init();
   runApp(const IrtzaLinkApp());
 }
 

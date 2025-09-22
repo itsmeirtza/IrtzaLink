@@ -45,9 +45,17 @@ export const createUser = async (userId, userData) => {
       ...userData,
       createdAt: new Date(),
       updatedAt: new Date(),
-      isActive: true
+      isActive: true,
+      // ALWAYS include follow arrays for data persistence
+      followers: userData.followers || [],
+      following: userData.following || [],
+      // Initialize other social features
+      socialLinks: userData.socialLinks || {},
+      contactInfo: userData.contactInfo || {},
+      theme: userData.theme || 'dark'
     };
     await setDoc(doc(db, 'users', userId), userDataWithTimestamp, { merge: true });
+    console.log(`✅ User created with followers/following arrays: ${userId}`);
     return { success: true };
   } catch (error) {
     console.error('Error creating user:', error);

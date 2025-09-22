@@ -11,6 +11,7 @@ import LoadingSplash from './components/LoadingSplash';
 import Footer from './components/Footer';
 import ChatBox from './components/ChatBox';
 import ChatManager from './components/ChatManager';
+import ThreeBackground from './components/ThreeBackground';
 
 // Pages
 import Login from './pages/Login';
@@ -197,8 +198,9 @@ function App() {
     );
   }
 
-  return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200 ${darkMode ? 'dark' : ''}`}>
+return (
+    <div className={`min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200 ${darkMode ? 'dark' : ''} relative overflow-hidden`}>
+      <ThreeBackground />
       <Router>
         <Toaster
           position="top-right"
