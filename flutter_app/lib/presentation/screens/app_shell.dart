@@ -3,11 +3,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../data/services/enhanced_auth_service.dart';
-import 'home/modern_home_screen.dart';
-import 'explore/explore_screen.dart';
-import 'create/create_screen.dart';
-import 'activity/activity_screen.dart';
-import 'profile/enhanced_profile_screen.dart';
+import '../../screens/home/home_screen.dart'; // Dashboard with user stats and links
+import '../../screens/profile/profile_screen.dart'; // Profile management & social links
+import '../../screens/analytics/analytics_screen.dart'; // Analytics & visit stats
+import 'get_verified/get_verified_screen.dart'; // Get verified badge functionality
+import '../../screens/settings/settings_screen.dart'; // Settings & preferences
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -23,38 +23,38 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   final List<AppTab> _tabs = [
     AppTab(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home,
-      label: 'Home',
-    ),
-    AppTab(
-      icon: Icons.search_outlined,
-      activeIcon: Icons.search,
-      label: 'Explore',
-    ),
-    AppTab(
-      icon: Icons.add_box_outlined,
-      activeIcon: Icons.add_box,
-      label: 'Create',
-    ),
-    AppTab(
-      icon: Icons.favorite_outline,
-      activeIcon: Icons.favorite,
-      label: 'Activity',
+      icon: Icons.dashboard_outlined,
+      activeIcon: Icons.dashboard,
+      label: 'Dashboard',
     ),
     AppTab(
       icon: Icons.person_outline,
       activeIcon: Icons.person,
       label: 'Profile',
     ),
+    AppTab(
+      icon: Icons.analytics_outlined,
+      activeIcon: Icons.analytics,
+      label: 'Analytics',
+    ),
+    AppTab(
+      icon: Icons.verified_outlined,
+      activeIcon: Icons.verified,
+      label: 'Get Verified',
+    ),
+    AppTab(
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings,
+      label: 'Settings',
+    ),
   ];
 
   final List<Widget> _screens = const [
-    ModernHomeScreen(),
-    ExploreScreen(),
-    CreateScreen(),
-    ActivityScreen(),
-    EnhancedProfileScreen(),
+    HomeScreen(), // Dashboard - main hub with user stats
+    ProfileScreen(), // Profile - manage bio, social links, photos
+    AnalyticsScreen(), // Analytics - profile visits, QR scans
+    GetVerifiedScreen(), // Get Verified - verification badge process
+    SettingsScreen(), // Settings - theme, preferences, account
   ];
 
   @override
@@ -107,6 +107,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: _buildAppBar(context),
+      drawer: _buildDrawer(context),
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
@@ -209,6 +211,156 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ),
     ).animate(target: isActive ? 1 : 0)
       .scaleXY(begin: 0.95, end: 1.0, duration: 200.ms, curve: Curves.easeOut);
+  }
+
+  PreferredSizeWidget? _buildAppBar(BuildContext context) {
+    return AppBar(
+      title: Text(_getPageTitle()),
+      elevation: 0,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {
+            // Navigate to notifications
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.search),
+          onPressed: () {
+            // Navigate to search
+          },
+        ),
+      ],
+    );
+  }
+
+  String _getPageTitle() {
+    switch (_currentIndex) {
+      case 0:
+        return 'Dashboard';
+      case 1:
+        return 'Profile';
+      case 2:
+        return 'Analytics';
+      case 3:
+        return 'Get Verified';
+      case 4:
+        return 'Settings';
+      default:
+        return 'IrtzaLink';
+    }
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Consumer<EnhancedAuthService>(
+        builder: (context, authService, child) {
+          final user = authService.currentUser;
+          final userData = authService.userData;
+          
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              UserAccountsDrawerHeader(
+                currentAccountPicture: CircleAvatar(
+                  backgroundImage: user?.photoURL != null 
+                      ? NetworkImage(user!.photoURL!) 
+                      : null,
+                  backgroundColor: Colors.blue,
+                  child: user?.photoURL == null 
+                      ? const Icon(Icons.person, color: Colors.white) 
+                      : null,
+                ),
+                accountName: Text(userData?['display_name'] ?? user?.displayName ?? 'User'),
+                accountEmail: Text(user?.email ?? ''),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue, Colors.purple],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.qr_code),
+                title: const Text('QR Code'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to QR screen
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings),
+                title: const Text('Admin Panel'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to admin panel
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.people),
+                title: const Text('Follow Test'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to follow test
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.group),
+                title: const Text('Followers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to followers
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.person_add),
+                title: const Text('Following'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to following
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.help),
+                title: const Text('Contact Us'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to contact
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip),
+                title: const Text('Privacy Policy'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to privacy
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.info),
+                title: const Text('About Us'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to about
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Logout', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await authService.signOut();
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 

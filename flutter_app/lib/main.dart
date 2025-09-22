@@ -1,18 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'services/auth_service.dart';
+// Enhanced services
+import 'data/services/enhanced_auth_service.dart';
+import 'core/services/app_initializer.dart';
+// Keep old services for compatibility
 import 'services/user_service.dart';
 import 'services/public_profile_service.dart';
 import 'services/theme_service.dart';
 import 'services/analytics_service.dart';
+// Enhanced screens
+import 'presentation/screens/app_shell.dart';
+import 'presentation/screens/auth/modern_auth_screen.dart';
+// Keep old screens for fallback
 import 'screens/splash_screen.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/home/home_screen.dart';
-import 'screens/profile/profile_screen.dart';
-import 'screens/settings/settings_screen.dart';
-import 'screens/qr/qr_screen.dart';
 import 'screens/init_error_screen.dart';
 import 'utils/app_themes.dart';
 
@@ -32,8 +33,8 @@ class AppBootstrap extends StatelessWidget {
   const AppBootstrap({super.key});
 
   Future<void> _init() async {
-    // If google-services.json exists and plugin is applied, this will auto-pick config
-    await Firebase.initializeApp();
+    // Use enhanced app initializer for Firebase + Supabase
+    await AppInitializer.initialize();
   }
 
   @override
@@ -66,7 +67,9 @@ class IrtzaLinkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
+        // Enhanced auth service
+        ChangeNotifierProvider(create: (_) => EnhancedAuthService()),
+        // Keep old services for compatibility
         ChangeNotifierProvider(create: (_) => UserService()),
         ChangeNotifierProvider(create: (_) => PublicProfileService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
@@ -100,28 +103,21 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // BYPASS AUTHENTICATION - Go directly to main app
-    // This allows testing the UI without authentication
-    return const HomeScreen();
-    
-    // Original auth logic (commented for testing):
-    /*
-    return Consumer<AuthService>(
+    return Consumer<EnhancedAuthService>(
       builder: (context, authService, child) {
         // Show splash screen while checking auth state
         if (authService.isLoading) {
           return const SplashScreen();
         }
         
-        // Show login screen if not authenticated
+        // Show modern auth screen if not authenticated
         if (!authService.isAuthenticated) {
-          return const LoginScreen();
+          return const ModernAuthScreen();
         }
         
-        // Show home screen if authenticated
-        return const HomeScreen();
+        // Show enhanced app shell when authenticated
+        return const AppShell();
       },
     );
-    */
   }
 }
