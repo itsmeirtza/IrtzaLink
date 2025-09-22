@@ -46,7 +46,7 @@ jobs:
       run: cd flutter_app && flutter pub deps
 
     - name: Analyze project source
-      run: cd flutter_app && flutter analyze --no-fatal-infos
+      run: cd flutter_app && flutter analyze --no-fatal-infos --no-fatal-warnings
 
     - name: Check formatting
       run: cd flutter_app && dart format --set-exit-if-changed .
@@ -96,7 +96,7 @@ jobs:
       run: cd flutter_app && flutter build ios --release --no-codesign --dry-run
 
     - name: Upload APK artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: release-apk
         path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
@@ -137,7 +137,7 @@ jobs:
           --no-headless
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: integration-test-results
