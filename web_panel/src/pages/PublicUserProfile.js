@@ -92,9 +92,6 @@ const PublicUserProfile = ({ currentUser }) => {
     }
     setShareOpen(true);
   };
-      </div>
-    );
-  }
 
   if (!userData) {
     return (
