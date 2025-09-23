@@ -8,6 +8,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
 import QRCode from 'react-qr-code';
 import toast from 'react-hot-toast';
+import ShareDialog from '../components/ShareDialog';
+import { getProfileUrl, copyToClipboard } from '../utils/share';
 import {
   UserPlusIcon,
   UserMinusIcon,
@@ -21,6 +23,7 @@ const PublicUserProfile = ({ currentUser }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followRefreshKey, setFollowRefreshKey] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -74,8 +77,7 @@ const PublicUserProfile = ({ currentUser }) => {
   };
 
   const handleShare = async () => {
-    const { getProfileUrl } = await import('../utils/share');
-    const profileUrl = getProfileUrl(userId);
+    const profileUrl = getProfileUrl({ userId, username: userData?.username });
     if (navigator.share) {
       try {
         await navigator.share({
@@ -85,27 +87,11 @@ const PublicUserProfile = ({ currentUser }) => {
         });
         return;
       } catch (error) {
-        console.log('Native sharing failed, falling back to clipboard:', error);
+        console.log('Native sharing failed, opening share modal:', error);
       }
     }
-    try {
-      await navigator.clipboard.writeText(profileUrl);
-      toast.success('Profile link copied to clipboard!');
-    } catch (clipboardError) {
-      const tempInput = document.createElement('input');
-      tempInput.value = profileUrl;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      toast.success('Profile link copied to clipboard!');
-    }
+    setShareOpen(true);
   };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <LoadingSpinner size="large" text="Loading profile..." />
       </div>
     );
   }
@@ -243,6 +229,14 @@ const PublicUserProfile = ({ currentUser }) => {
             )}
           </div>
         </div>
+
+        {/* Share dialog for public profile */}
+        <ShareDialog
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          url={getProfileUrl({ userId, username: userData?.username })}
+          title={`Share @${userData.username}`}
+        />
 
         {/* Social Links */}
         {activeSocialLinks.length > 0 && (

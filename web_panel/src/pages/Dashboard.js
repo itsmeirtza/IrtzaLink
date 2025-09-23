@@ -10,6 +10,8 @@ import FollowManager from '../components/FollowManager';
 import FollowButton from '../components/FollowButton';
 import QRCode from 'react-qr-code';
 import toast from 'react-hot-toast';
+import ShareDialog from '../components/ShareDialog';
+import { getProfileUrl, copyToClipboard } from '../utils/share';
 import { 
   UserCircleIcon, 
   ChartBarIcon, 
@@ -33,6 +35,7 @@ const Dashboard = ({ user }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (user && user.uid) {
@@ -101,31 +104,25 @@ const Dashboard = ({ user }) => {
   };
 
   const shareProfile = async () => {
-    const { getProfileUrl } = await import('../utils/share');
-    const profileUrl = getProfileUrl(user.uid);
+    const profileUrl = getProfileUrl({ userId: user.uid, username: userData?.username });
     try {
       if (navigator.share) {
         await navigator.share({
           title: `${userData?.displayName || 'My'} - IrtzaLink`,
-        text: `Check out my links on IrtzaLink!`,
+          text: `Check out my links on IrtzaLink!`,
           url: profileUrl
         });
       } else {
-        await navigator.clipboard.writeText(profileUrl);
+        setShareOpen(true);
       }
     } catch (error) {
-      try {
-        await navigator.clipboard.writeText(profileUrl);
-      } catch (e) {}
+      setShareOpen(true);
     }
   };
 
   const copyProfileLink = async () => {
-    const { getProfileUrl } = await import('../utils/share');
-    const profileUrl = getProfileUrl(user.uid);
-    try {
-      await navigator.clipboard.writeText(profileUrl);
-    } catch (e) {}
+    const profileUrl = getProfileUrl({ userId: user.uid, username: userData?.username });
+    await copyToClipboard(profileUrl);
   };
 
   const handleSearch = async (query) => {
@@ -468,6 +465,14 @@ const Dashboard = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Share dialog */}
+      <ShareDialog
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        url={getProfileUrl({ userId: user.uid, username: userData?.username })}
+        title="Share Your Profile"
+      />
 
       {/* Getting Started */}
       {(!userData?.username || !userData?.profileURL) && (
