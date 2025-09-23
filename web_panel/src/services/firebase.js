@@ -1261,9 +1261,10 @@ export const unfollowUser = async (followerId, followingId) => {
 // Check if user is following another user
 export const isFollowing = async (followerId, followingId) => {
   try {
-    const userData = await getUserData(followerId);
-    if (userData.success && userData.data.following) {
-      return { success: true, isFollowing: userData.data.following.includes(followingId) };
+    const snap = await getDoc(doc(db, 'users', followerId));
+    if (snap.exists()) {
+      const following = Array.isArray(snap.data().following) ? snap.data().following : [];
+      return { success: true, isFollowing: following.includes(followingId) };
     }
     return { success: true, isFollowing: false };
   } catch (error) {
@@ -1423,19 +1424,24 @@ export const getFollowCounts = async (userId) => {
 // Check if two users are mutual followers (friends)
 export const areMutualFollowers = async (userId1, userId2) => {
   try {
-    const [user1Data, user2Data] = await Promise.all([
-      getUserData(userId1),
-      getUserData(userId2)
+    // Query Firestore directly to avoid stale cache/supabase mismatches
+    const [u1Snap, u2Snap] = await Promise.all([
+      getDoc(doc(db, 'users', userId1)),
+      getDoc(doc(db, 'users', userId2))
     ]);
-    
-    if (user1Data.success && user2Data.success) {
-      const user1Following = user1Data.data.following || [];
-      const user1Followers = user1Data.data.followers || [];
-      
-      // Check if user1 follows user2 AND user2 follows user1
-      const user1FollowsUser2 = user1Following.includes(userId2);
-      const user2FollowsUser1 = user1Followers.includes(userId2);
-      
+
+    if (u1Snap.exists() && u2Snap.exists()) {
+      const u1 = u1Snap.data();
+      const u2 = u2Snap.data();
+
+      const u1Following = Array.isArray(u1.following) ? u1.following : [];
+      const u1Followers = Array.isArray(u1.followers) ? u1.followers : [];
+      const u2Following = Array.isArray(u2.following) ? u2.following : [];
+      const u2Followers = Array.isArray(u2.followers) ? u2.followers : [];
+
+      const user1FollowsUser2 = u1Following.includes(userId2);
+      const user2FollowsUser1 = u2Following.includes(userId1) || u1Followers.includes(userId2) || u2Followers.includes(userId1);
+
       return {
         success: true,
         areMutual: user1FollowsUser2 && user2FollowsUser1,
@@ -1443,8 +1449,8 @@ export const areMutualFollowers = async (userId1, userId2) => {
         user2FollowsUser1
       };
     }
-    
-    return { success: false, areMutual: false };
+
+    return { success: true, areMutual: false, user1FollowsUser2: false, user2FollowsUser1: false };
   } catch (error) {
     console.error('Error checking mutual follow status:', error);
     return { success: false, error: error.message, areMutual: false };

@@ -1,7 +1,7 @@
 {
   "name": "irtzalink",
   "version": "1.0.0",
-  "description": "Personal Link Management System - Complete solution with Flutter app, React web panel, and Firebase backend",
+  "description": "Personal Link Management System - Web application (React/Next.js) with Firebase backend",
   "main": "index.js",
   "scripts": {
     "install:web": "cd web_panel && npm install",
@@ -20,7 +20,6 @@
     "linktree",
     "personal-links",
     "qr-code",
-    "flutter",
     "react",
     "firebase",
     "link-management"

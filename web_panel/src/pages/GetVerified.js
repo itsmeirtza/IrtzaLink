@@ -179,26 +179,11 @@ const GetVerified = ({ user }) => {
   }
 
   const handleWhatsAppContact = () => {
-    const message = encodeURIComponent("Hi! I'm interested in getting verified badge for my IrtzaLink profile. Please provide more details about the verification process.");
-    window.open(`https://wa.me/+923001234567?text=${message}`, '_blank');
+    window.open('https://wa.me/923706107055?text=Hello%20IrtzaLink', '_blank');
   };
 
-  const handleEmailContact = () => {
-    const subject = encodeURIComponent("Verification Badge Request - IrtzaLink");
-    const body = encodeURIComponent(`Hi,
-
-I would like to request a verified badge for my IrtzaLink profile.
-
-My Profile Details:
-- Username: [Your Username]
-- Display Name: [Your Name]
-- Email: [Your Email]
-
-Please provide me with the verification process and payment details.
-
-Thank you!`);
-    
-    window.open(`mailto:verification@irtzalink.com?subject=${subject}&body=${body}`, '_blank');
+  const handleInstagramContact = () => {
+    window.open('https://instagram.com/irtzalink', '_blank');
   };
 
   const features = [
@@ -341,15 +326,15 @@ Thank you!`);
                 <span>WhatsApp</span>
               </motion.button>
               
-              {/* Email Button */}
+              {/* Instagram Button (replaces Email) */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleEmailContact}
-                className="flex items-center justify-center space-x-3 bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl"
+                onClick={handleInstagramContact}
+                className="flex items-center justify-center space-x-3 bg-pink-500 hover:bg-pink-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl"
               >
-                <EnvelopeIcon className="w-6 h-6" />
-                <span>Email</span>
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 5-5V7c0-2.757-2.243-5-5-5H7zm10 2c1.654 0 3 1.346 3 3v10c0 1.654-1.346 3-3 3H7c-1.654 0-3-1.346-3-3V7c0-1.654 1.346-3 3-3h10zm-5 3a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6zm5.5-.75a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+                <span>Instagram @irtzalink</span>
               </motion.button>
             </div>
           </div>

@@ -80,11 +80,12 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
       if (result.success) {
         console.log('✅ Follow successful!');
         
-        // Immediately update UI state
-        setRelationship('following');
+        // Immediately update UI state (if they already follow you, you're now friends)
+        const nextState = relationship === 'follower' ? 'friends' : 'following';
+        setRelationship(nextState);
         
         // Save to cache
-        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, 'following');
+        followDataManager.updateFollowRelationship(currentUser.uid, targetUser.uid, nextState);
         
         toast.success(`Started following @${targetUser.username}`, {
           icon: '🚀',
@@ -228,7 +229,7 @@ const FollowButton = ({ currentUser, targetUser, onFollowChange }) => {
         };
       case 'friends':
         return {
-          text: 'Following',
+          text: 'Friends',
           icon: CheckIcon,
           className: 'bg-gray-200 dark:bg-gray-700 hover:bg-red-500 dark:hover:bg-red-600 text-gray-700 dark:text-gray-300 hover:text-white',
           onClick: handleUnfollow,

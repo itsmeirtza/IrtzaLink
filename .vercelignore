@@ -1,5 +1,4 @@
 # Exclude unnecessary directories
-flutter_app/
 firebase/
 docs/
 scripts/

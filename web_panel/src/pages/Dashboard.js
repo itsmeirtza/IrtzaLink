@@ -101,26 +101,31 @@ const Dashboard = ({ user }) => {
   };
 
   const shareProfile = async () => {
-    if (userData?.username && userData?.profileURL) {
-      try {
+    const { getProfileUrl } = await import('../utils/share');
+    const profileUrl = getProfileUrl(user.uid);
+    try {
+      if (navigator.share) {
         await navigator.share({
-          title: `${userData.displayName} - IrtzaLink`,
-          text: `Check out my links on IrtzaLink!`,
-          url: userData.profileURL
+          title: `${userData?.displayName || 'My'} - IrtzaLink`,
+        text: `Check out my links on IrtzaLink!`,
+          url: profileUrl
         });
-      } catch (error) {
-        // Fallback to copying to clipboard
-        navigator.clipboard.writeText(userData.profileURL);
-        // You could show a toast here
+      } else {
+        await navigator.clipboard.writeText(profileUrl);
       }
+    } catch (error) {
+      try {
+        await navigator.clipboard.writeText(profileUrl);
+      } catch (e) {}
     }
   };
 
-  const copyProfileLink = () => {
-    if (userData?.profileURL) {
-      navigator.clipboard.writeText(userData.profileURL);
-      // Show toast notification
-    }
+  const copyProfileLink = async () => {
+    const { getProfileUrl } = await import('../utils/share');
+    const profileUrl = getProfileUrl(user.uid);
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+    } catch (e) {}
   };
 
   const handleSearch = async (query) => {
@@ -406,9 +411,6 @@ const Dashboard = ({ user }) => {
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             📱 Your Digital Card
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Download and share your professional digital business card
-          </p>
           <div className="flex justify-center">
             <div className="transform scale-75 lg:scale-100">
               <DigitalCard 

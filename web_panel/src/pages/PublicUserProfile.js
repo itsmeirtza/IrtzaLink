@@ -74,10 +74,9 @@ const PublicUserProfile = ({ currentUser }) => {
   };
 
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/user/${userId}`;
-    
-    // Check if native sharing is available and supported
-    if (navigator.share && navigator.canShare) {
+    const { getProfileUrl } = await import('../utils/share');
+    const profileUrl = getProfileUrl(userId);
+    if (navigator.share) {
       try {
         await navigator.share({
           title: `${userData.displayName} - IrtzaLink`,
@@ -89,13 +88,10 @@ const PublicUserProfile = ({ currentUser }) => {
         console.log('Native sharing failed, falling back to clipboard:', error);
       }
     }
-    
-    // Fallback to clipboard
     try {
       await navigator.clipboard.writeText(profileUrl);
       toast.success('Profile link copied to clipboard!');
     } catch (clipboardError) {
-      // Final fallback - create a temporary input element
       const tempInput = document.createElement('input');
       tempInput.value = profileUrl;
       document.body.appendChild(tempInput);
