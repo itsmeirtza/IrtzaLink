@@ -231,9 +231,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> with TickerPr
                       child: CircleAvatar(
                         radius: 50,
                         backgroundImage: _picked != null
-                            ? FileImage(_picked!)
+                            ? FileImage(_picked!) as ImageProvider<Object>
                             : profile?.photoUrl != null
-                                ? NetworkImage(profile!.photoUrl!)
+                                ? NetworkImage(profile!.photoUrl!) as ImageProvider<Object>
                                 : null,
                         child: profile?.photoUrl == null && _picked == null 
                           ? Icon(Icons.person, size: 50, color: Colors.grey.shade400) 
@@ -615,6 +615,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> with TickerPr
             }),
         ],
       ),
+    );
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {
