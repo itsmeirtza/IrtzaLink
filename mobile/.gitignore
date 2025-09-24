@@ -1,0 +1,40 @@
+# See https://dart.dev/guides/libraries/private-files for details.
+# Files and directories created by pub.
+.dart_tool/
+.packages
+build/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+.packages
+pubspec.lock
+
+# Platform-specific (generated in CI)
+android/
+ios/
+web/
+macos/
+linux/
+windows/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code related
+.vscode/
+
+# Others
+*.log
+**/*.orig
+**/*.rej
+
+# Environment files
+.env
+.env.*
