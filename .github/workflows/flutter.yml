@@ -48,3 +48,38 @@ jobs:
         with:
           name: irtzalink-apk
           path: mobile/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: irtzalink-aab
+          path: mobile/build/app/outputs/bundle/release/app-release.aab
+
+  build-web-panel:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web_panel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-panel-build
+          path: web_panel/build
