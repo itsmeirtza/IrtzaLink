@@ -5,7 +5,6 @@ import { getUserData, searchUsers } from '../services/dataStorage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DigitalCard from '../components/DigitalCard';
 import VerifiedBadge from '../components/VerifiedBadge';
-import LiveAnalytics from '../components/LiveAnalytics';
 import FollowManager from '../components/FollowManager';
 import FollowButton from '../components/FollowButton';
 import QRCode from 'react-qr-code';
@@ -14,7 +13,6 @@ import ShareDialog from '../components/ShareDialog';
 import { getProfileUrl, copyToClipboard } from '../utils/share';
 import { 
   UserCircleIcon, 
-  ChartBarIcon, 
   QrCodeIcon, 
   ShareIcon,
   EyeIcon,
@@ -179,13 +177,6 @@ const Dashboard = ({ user }) => {
       icon: UserCircleIcon,
       link: '/profile',
       color: 'bg-blue-500'
-    },
-    {
-      title: 'View Analytics',
-      description: 'See your profile performance',
-      icon: ChartBarIcon,
-      link: '/analytics',
-      color: 'bg-green-500'
     },
     {
       title: 'Settings',
@@ -425,10 +416,6 @@ const Dashboard = ({ user }) => {
         </div>
       )}
 
-      {/* Live Analytics Section */}
-      <div className="mb-8">
-        <LiveAnalytics user={user} />
-      </div>
 
       {/* Follow Manager Section */}
       <FollowManager user={user} />

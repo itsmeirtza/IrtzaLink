@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import NotificationCenter from './NotificationCenter';
 import {
   UserCircleIcon,
-  ChartBarIcon,
   CogIcon,
   ArrowRightOnRectangleIcon,
   SunIcon,
@@ -87,7 +86,6 @@ const Navbar = ({ user, darkMode, toggleDarkMode, openChatManager }) => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Profile', href: '/profile', icon: UserCircleIcon },
-    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
     { name: 'Get Verified', href: '/get-verified', icon: CheckBadgeIcon },
     { name: 'Settings', href: '/settings', icon: CogIcon },
     { name: 'Help', href: '/help', icon: QuestionMarkCircleIcon },

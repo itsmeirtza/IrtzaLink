@@ -8,13 +8,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import VerifiedBadge from '../components/VerifiedBadge';
 import QRCode from 'react-qr-code';
 import toast from 'react-hot-toast';
-import ShareDialog from '../components/ShareDialog';
-import { getProfileUrl, copyToClipboard } from '../utils/share';
 import {
   UserPlusIcon,
   UserMinusIcon,
   ChatBubbleLeftRightIcon,
-  ShareIcon,
   UsersIcon
 } from '@heroicons/react/24/outline';
 
@@ -23,7 +20,6 @@ const PublicUserProfile = ({ currentUser }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followRefreshKey, setFollowRefreshKey] = useState(0);
-  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -76,22 +72,6 @@ const PublicUserProfile = ({ currentUser }) => {
     }
   };
 
-  const handleShare = async () => {
-    const profileUrl = getProfileUrl({ userId, username: userData?.username });
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${userData.displayName} - IrtzaLink`,
-          text: `Check out ${userData.displayName}'s profile on IrtzaLink`,
-          url: profileUrl
-        });
-        return;
-      } catch (error) {
-        console.log('Native sharing failed, opening share modal:', error);
-      }
-    }
-    setShareOpen(true);
-  };
 
   if (!userData) {
     return (
@@ -203,14 +183,6 @@ const PublicUserProfile = ({ currentUser }) => {
                     <span>Message</span>
                   </button>
 
-                  {/* Share Button */}
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center justify-center space-x-2 px-4 py-3 sm:py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors duration-200 w-full sm:w-auto"
-                  >
-                    <ShareIcon className="w-4 h-4" />
-                    <span>Share</span>
-                  </button>
                 </div>
               )}
           </div>
@@ -227,13 +199,6 @@ const PublicUserProfile = ({ currentUser }) => {
           </div>
         </div>
 
-        {/* Share dialog for public profile */}
-        <ShareDialog
-          isOpen={shareOpen}
-          onClose={() => setShareOpen(false)}
-          url={getProfileUrl({ userId, username: userData?.username })}
-          title={`Share @${userData.username}`}
-        />
 
         {/* Social Links */}
         {activeSocialLinks.length > 0 && (
