@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/notification_item.dart';
 import '../../services/auth_service.dart';
 
 class NotificationsPage extends ConsumerWidget {
@@ -16,24 +15,46 @@ class NotificationsPage extends ConsumerWidget {
       error: (e, st) => Scaffold(body: Center(child: Text('Error: $e'))),
       data: (user) {
         if (user == null) return const Scaffold(body: Center(child: Text('Please sign in')));
+        final stream = FirebaseFirestore.instance
+            .collection('notifications')
+            .where('toUserId', isEqualTo: user.uid)
+            .orderBy('timestamp', descending: true)
+            .snapshots();
         return Scaffold(
           appBar: AppBar(title: const Text('Notifications')),
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance.collection('users').doc(user.uid).collection('notifications').orderBy('createdAt', descending: true).snapshots(),
+            stream: stream,
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final items = snapshot.data!.docs.map((d) => NotificationItem.fromMap(d.data()..['id'] = d.id)).toList();
-              if (items.isEmpty) return const Center(child: Text('No notifications'));
+              final docs = snapshot.data!.docs;
+              if (docs.isEmpty) return const Center(child: Text('No notifications'));
               return ListView.builder(
-                itemCount: items.length,
+                itemCount: docs.length,
                 itemBuilder: (context, index) {
-                  final n = items[index];
+                  final d = docs[index].data();
+                  final type = d['type'] as String? ?? 'system';
+                  final msg = d['message'] as String? ?? '';
+                  final ts = (d['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+                  IconData icon;
+                  switch (type) {
+                    case 'message':
+                      icon = Icons.chat_bubble;
+                      break;
+                    case 'follow':
+                      icon = Icons.person_add;
+                      break;
+                    case 'profile_visit':
+                      icon = Icons.visibility;
+                      break;
+                    default:
+                      icon = Icons.notifications;
+                  }
                   return Card(
                     child: ListTile(
-                      leading: Icon(n.type == 'message' ? Icons.chat_bubble : n.type == 'follow' ? Icons.person_add : Icons.info_outline),
-                      title: Text(n.title),
-                      subtitle: Text(n.body),
-                      trailing: Text(_ago(n.createdAt)),
+                      leading: Icon(icon),
+                      title: Text(type.toUpperCase()),
+                      subtitle: Text(msg),
+                      trailing: Text(_ago(ts)),
                     ),
                   );
                 },

@@ -17,6 +17,7 @@ import 'features/notifications/notifications_page.dart';
 import 'features/chats/chats_page.dart';
 import 'features/chats/chat_thread_page.dart';
 import 'features/follow/followers_page.dart';
+import 'features/follow/following_page.dart';
 import 'features/qr/qr_share_page.dart';
 import 'features/qr/qr_scan_page.dart';
 
@@ -48,6 +49,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             GoRoute(path: '/chats', builder: (c, s) => const ChatsPage()),
             GoRoute(path: '/chats/thread', builder: (c, s) => ChatThreadPage(chatId: s.uri.queryParameters['id'] ?? '')),
             GoRoute(path: '/followers', builder: (c, s) => const FollowersPage()),
+            GoRoute(path: '/following', builder: (c, s) => const FollowingPage()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/notifications', builder: (c, s) => const NotificationsPage()),

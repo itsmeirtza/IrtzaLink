@@ -44,7 +44,27 @@ class ProfilePage extends ConsumerWidget {
                       const SizedBox(height: 12),
                       Center(child: Text(p.displayName, style: Theme.of(context).textTheme.headlineSmall)),
                       Center(child: Text('@${p.username}')),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          InkWell(onTap: () => context.go('/followers'), child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Column(children: [
+                              Text('${p.followers}', style: Theme.of(context).textTheme.titleMedium),
+                              const Text('Followers'),
+                            ]),
+                          )),
+                          InkWell(onTap: () => context.go('/following'), child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Column(children: [
+                              Text('${p.following}', style: Theme.of(context).textTheme.titleMedium),
+                              const Text('Following'),
+                            ]),
+                          )),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Text(p.bio),
                       const SizedBox(height: 24),
                       FilledButton.icon(

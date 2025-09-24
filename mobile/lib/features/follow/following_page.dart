@@ -6,11 +6,10 @@ import '../../common/widgets/verified_badge.dart';
 import '../../models/user_profile.dart';
 import '../../services/firestore_service.dart';
 import '../../services/follow_service.dart';
-
 import 'widgets/follow_button.dart';
 
-class FollowersPage extends ConsumerWidget {
-  const FollowersPage({super.key});
+class FollowingPage extends ConsumerWidget {
+  const FollowingPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,10 +18,10 @@ class FollowersPage extends ConsumerWidget {
       return const Scaffold(body: Center(child: Text('Please sign in')));
     }
     final counts = ref.watch(_followCountsProvider(currentUid));
-    final followerIds = ref.watch(_followersProvider(currentUid));
+    final followingIds = ref.watch(_followingProvider(currentUid));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Followers')),
+      appBar: AppBar(title: const Text('Following')),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -32,11 +31,11 @@ class FollowersPage extends ConsumerWidget {
             loading: () => const LinearProgressIndicator(),
           ),
           const SizedBox(height: 12),
-          followerIds.when(
+          followingIds.when(
             loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
             error: (e, st) => Center(child: Text('Error: $e')),
             data: (ids) => ids.isEmpty
-                ? _EmptyState(icon: Icons.favorite_border, title: 'No Followers Yet', subtitle: 'When people follow you, they will appear here.')
+                ? const _EmptyState(icon: Icons.group_outlined, title: 'Not Following Anyone', subtitle: 'Start following people to see them here.')
                 : _UsersList(userIds: ids, highlightCurrent: currentUid),
           ),
         ],
@@ -45,7 +44,7 @@ class FollowersPage extends ConsumerWidget {
   }
 }
 
-final _followersProvider = StreamProvider.family<List<String>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowerIds(uid));
+final _followingProvider = StreamProvider.family<List<String>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowingIds(uid));
 final _followCountsProvider = StreamProvider.family<Map<String, int>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowCounts(uid));
 
 class _CountsBar extends StatelessWidget {
