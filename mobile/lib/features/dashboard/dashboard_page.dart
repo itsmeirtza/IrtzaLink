@@ -223,7 +223,7 @@ class _ProfileHeader extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (p?.bio != null && p!.bio.isNotEmpty) ..[
+                      if (p?.bio != null && p!.bio.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
                           p.bio,
@@ -672,6 +672,7 @@ class _FollowNetwork extends ConsumerWidget {
 
 final _followersProvider = StreamProvider.family<List<String>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowerIds(uid));
 final _followingProvider = StreamProvider.family<List<String>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowingIds(uid));
+final _profileOnceProvider = FutureProvider.family<UserProfile?, String>((ref, uid) async => ref.read(firestoreServiceProvider).fetchProfile(uid));
 
 class _UserIdsPreview extends ConsumerWidget {
   const _UserIdsPreview({required this.ids});

@@ -615,9 +615,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> with TickerPr
             }),
         ],
       ),
-    );
   }
-}
 
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
@@ -717,6 +715,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> with TickerPr
               id: DateTime.now().millisecondsSinceEpoch.toString(),
               title: title,
               url: url,
+              order: _customLinks.length,
             ));
           });
         },
@@ -737,6 +736,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> with TickerPr
               id: link.id,
               title: title,
               url: url,
+              order: index,
             );
           });
         },

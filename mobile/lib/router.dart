@@ -20,6 +20,7 @@ import 'features/follow/followers_page.dart';
 import 'features/follow/following_page.dart';
 import 'features/qr/qr_share_page.dart';
 import 'features/qr/qr_scan_page.dart';
+import 'features/search/search_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -29,6 +30,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/sign-in', builder: (c, s) => const SignInPage()),
       GoRoute(path: '/sign-up', builder: (c, s) => const SignUpPage()),
       GoRoute(path: '/reset', builder: (c, s) => const ResetPasswordPage()),
+      GoRoute(path: '/search', builder: (c, s) => const SearchPage()),
 
       // Shell routes with bottom navigation
       StatefulShellRoute.indexedStack(
