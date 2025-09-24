@@ -1,6 +1,6 @@
 class Env {
-  static String? get supabaseUrl => const String.fromEnvironment('SUPABASE_URL', defaultValue: null) ?? _env('SUPABASE_URL');
-  static String? get supabaseAnonKey => const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: null) ?? _env('SUPABASE_ANON_KEY');
+  static String? get supabaseUrl => const String.fromEnvironment('SUPABASE_URL', defaultValue: '') ?? _env('SUPABASE_URL');
+  static String? get supabaseAnonKey => const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '') ?? _env('SUPABASE_ANON_KEY');
 
   static String? _env(String key) {
     try {

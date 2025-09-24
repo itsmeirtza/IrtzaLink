@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
 import 'services/theme_service.dart';
+import 'theme.dart';
 
 class IrtzaLinkApp extends ConsumerWidget {
   const IrtzaLinkApp({super.key});
