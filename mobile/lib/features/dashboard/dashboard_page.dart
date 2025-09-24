@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/follow_service.dart';
 import '../../models/user_profile.dart';
 import '../../models/app_link.dart';
 import '../../theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -20,6 +23,17 @@ class DashboardPage extends ConsumerWidget {
       'Check out my IrtzaLink profile: $profileUrl',
       subject: '${profile.displayName} - IrtzaLink Profile',
     );
+  }
+
+  Future<void> _copyProfileLink(UserProfile? profile, BuildContext context) async {
+    if (profile == null) return;
+    final profileUrl = 'https://irtzalink.vercel.app/${profile.username}';
+    await Clipboard.setData(ClipboardData(text: profileUrl));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile link copied')), 
+      );
+    }
   }
 
   @override
@@ -39,6 +53,10 @@ class DashboardPage extends ConsumerWidget {
             elevation: 0,
             backgroundColor: Colors.transparent,
             actions: [
+              IconButton(
+                onPressed: () => context.go('/search'),
+                icon: Icon(Icons.search_rounded, color: ThemeService.primaryColor),
+              ),
               IconButton(
                 onPressed: () => context.go('/qr/share'),
                 icon: Icon(Icons.qr_code, color: ThemeService.primaryColor),
@@ -67,10 +85,18 @@ class DashboardPage extends ConsumerWidget {
                 profileStream.when(
                   loading: () => const _ShimmerCard(),
                   error: (e, st) => _ErrorCard(message: 'Profile error: $e'),
-                  data: (profile) => _ProfileHeader(profile: profile, onShare: () => _shareProfile(profile)),
+                  data: (profile) => _ProfileHeader(
+                    profile: profile,
+                    onShare: () => _shareProfile(profile),
+                    onCopy: () => _copyProfileLink(profile, context),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _StatsRow(profile: profileStream.value),
+                const SizedBox(height: 24),
+                _DigitalCard(profile: profileStream.value),
+                const SizedBox(height: 24),
+                _FollowNetwork(),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -105,9 +131,10 @@ final _profileProvider = StreamProvider.family<UserProfile?, String>((ref, uid) 
 final _linksProvider = StreamProvider.family<List<AppLink>, String>((ref, uid) => ref.watch(firestoreServiceProvider).watchLinks(uid));
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.profile, required this.onShare});
+  const _ProfileHeader({required this.profile, required this.onShare, required this.onCopy});
   final UserProfile? profile;
   final VoidCallback onShare;
+  final VoidCallback onCopy;
 
   @override
   Widget build(BuildContext context) {
@@ -238,6 +265,21 @@ class _ProfileHeader extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.share_rounded),
                     label: const Text('Share Profile'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onCopy,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: ThemeService.primaryColor,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.link),
+                    label: const Text('Copy Link'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -411,6 +453,129 @@ class _ShimmerCard extends StatelessWidget {
   }
 }
 
+class _DigitalCard extends StatelessWidget {
+  const _DigitalCard({required this.profile});
+  final UserProfile? profile;
+
+  @override
+  Widget build(BuildContext context) {
+    if (profile == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF111827)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              // Left: avatar and details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundImage: profile!.photoUrl != null ? NetworkImage(profile!.photoUrl!) : null,
+                          child: profile!.photoUrl == null ? const Icon(Icons.person, color: Colors.white) : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  profile!.displayName,
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                                const SizedBox(width: 6),
+                                if (profile!.verified) const Icon(Icons.verified, color: Colors.blueAccent, size: 20),
+                              ],
+                            ),
+                            Text(
+                              'irtzalink.site/${profile!.username}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      profile!.bio,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        _chip('Instagram'),
+                        _chip('YouTube'),
+                        _chip('Twitter'),
+                        _chip('Website'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Right: QR
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: QrImageView(
+                    data: 'https://irtzalink.vercel.app/${profile!.username}',
+                    version: QrVersions.auto,
+                    size: 100,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String label) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label, style: const TextStyle(color: Colors.white)),
+      );
+}
+
 class _ShimmerGrid extends StatelessWidget {
   const _ShimmerGrid();
 
@@ -438,6 +603,111 @@ class _ShimmerGrid extends StatelessWidget {
               strokeWidth: 2,
             ),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _FollowNetwork extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid == null) return const SizedBox.shrink();
+    final followers = ref.watch(_followersProvider(currentUid));
+    final following = ref.watch(_followingProvider(currentUid));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.people_outline),
+            const SizedBox(width: 8),
+            Text('Follow Network', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        DefaultTabController(
+          length: 2,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+            ),
+            child: Column(
+              children: [
+                const TabBar(
+                  tabs: [
+                    Tab(text: 'Followers'),
+                    Tab(text: 'Following'),
+                  ],
+                ),
+                SizedBox(
+                  height: 220,
+                  child: TabBarView(
+                    children: [
+                      followers.when(
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (e, st) => Center(child: Text('Error: $e')),
+                        data: (ids) => _UserIdsPreview(ids: ids),
+                      ),
+                      following.when(
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (e, st) => Center(child: Text('Error: $e')),
+                        data: (ids) => _UserIdsPreview(ids: ids),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+final _followersProvider = StreamProvider.family<List<String>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowerIds(uid));
+final _followingProvider = StreamProvider.family<List<String>, String>((ref, uid) => ref.watch(followServiceProvider).watchFollowingIds(uid));
+
+class _UserIdsPreview extends ConsumerWidget {
+  const _UserIdsPreview({required this.ids});
+  final List<String> ids;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ids.isEmpty) {
+      return const Center(child: Text('No users yet'));
+    }
+    final limited = ids.take(5).toList();
+    return ListView.separated(
+      padding: const EdgeInsets.all(12),
+      itemCount: limited.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final uid = limited[index];
+        final profile = ref.watch(_profileOnceProvider(uid));
+        return profile.when(
+          loading: () => const ListTile(title: LinearProgressIndicator()),
+          error: (e, st) => ListTile(title: Text('Error: $e')),
+          data: (p) => p == null
+              ? const SizedBox.shrink()
+              : Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(backgroundImage: p.photoUrl != null ? NetworkImage(p.photoUrl!) : null, child: p.photoUrl == null ? const Icon(Icons.person) : null),
+                    title: Text(p.displayName.isNotEmpty ? p.displayName : '@${p.username}'),
+                    subtitle: Text('@${p.username}'),
+                    trailing: const Icon(Icons.chevron_right),
+                  ),
+                ),
         );
       },
     );

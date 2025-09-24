@@ -70,6 +70,25 @@ class FirestoreService {
       };
     });
   }
+
+  // Lightweight search that fetches a small user set and filters client-side.
+  // For production parity with web app, create indexes on usernameLower/displayNameLower
+  // and use startAt/endAt.
+  Stream<List<UserProfile>> searchUsers(String term, {int limit = 100}) {
+    final usersCol = _users();
+    if (usersCol == null) return const Stream<List<UserProfile>>.empty();
+    final q = usersCol.limit(limit);
+    return q.snapshots().map((qs) {
+      final lower = term.trim().toLowerCase();
+      return qs.docs
+          .map((d) => UserProfile.fromMap(d.data()!..['id'] = d.id))
+          .where((u) =>
+              lower.isEmpty ||
+              u.username.toLowerCase().contains(lower) ||
+              u.displayName.toLowerCase().contains(lower))
+          .toList();
+    });
+  }
 }
 
 final firestoreServiceProvider = Provider<FirestoreService>((ref) => FirestoreService(ref.watch(firestoreProvider)));
