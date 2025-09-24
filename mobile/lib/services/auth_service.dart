@@ -15,8 +15,13 @@ final firebaseAuthProvider = Provider<FirebaseAuth?>((ref) {
 
 final authStateProvider = StreamProvider<User?>((ref) {
   final auth = ref.watch(firebaseAuthProvider);
-  if (auth == null) return const Stream<User?>.empty();
-  return auth.authStateChanges();
+  if (auth == null) {
+    // Ensure the app does not get stuck in a perpetual loading state when Firebase isn't configured yet.
+    // Emit a single null value so the UI can navigate to the sign-in page.
+    return Stream<User?>.value(null);
+  }
+  // Emit the current user immediately, then follow authentication state changes.
+  return auth.authStateChanges().map((user) => user);
 });
 
 class AuthService {
