@@ -19,8 +19,16 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   Future<void> _submit() async {
     setState(() => _loading = true);
     try {
-      await ref.read(authServiceProvider).signUpWithEmail(_email.text.trim(), _password.text);
-      if (mounted) context.go('/dashboard');
+      final cred = await ref.read(authServiceProvider).signUpWithEmail(_email.text.trim(), _password.text);
+      if (cred != null) {
+        if (mounted) context.go('/dashboard');
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Authentication is not available. Configure Firebase first.')),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
