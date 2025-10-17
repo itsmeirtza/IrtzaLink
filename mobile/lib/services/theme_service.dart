@@ -8,7 +8,7 @@ import '../theme.dart';
 final themeModeProvider = StateNotifierProvider<ThemeModeController, ThemeMode>((ref) => ThemeModeController());
 
 class ThemeModeController extends StateNotifier<ThemeMode> {
-  ThemeModeController() : super(ThemeMode.system) {
+  ThemeModeController() : super(ThemeMode.dark) {
     _load();
   }
 
@@ -18,7 +18,7 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getString(_key);
     if (value != null) {
-      state = ThemeMode.values.firstWhere((m) => describeEnum(m) == value, orElse: () => ThemeMode.system);
+      state = ThemeMode.values.firstWhere((m) => describeEnum(m) == value, orElse: () => ThemeMode.dark);
     }
   }
 

@@ -7,7 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'app.dart';
 import 'env.dart';
-import 'firebase_options.dart' as fb_options; // instructs to run flutterfire configure
+import 'firebase_options.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
@@ -22,11 +22,12 @@ Future<void> main() async {
   bool firebaseReady = false;
   try {
     await Firebase.initializeApp(
-      options: fb_options.maybeDefaultOptions(),
+      options: DefaultFirebaseOptions.currentPlatform,
     );
     firebaseReady = true;
+    debugPrint('[IrtzaLink] Firebase initialized successfully');
   } catch (e) {
-    debugPrint('[IrtzaLink] Firebase not fully configured yet: $e');
+    debugPrint('[IrtzaLink] Firebase initialization failed: $e');
   }
 
   // Initialize Notifications (FCM)

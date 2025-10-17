@@ -45,12 +45,12 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Google Sign-In requires Firebase configuration.')),
+            const SnackBar(content: Text('Google Sign-In failed. Please try again.')),
           );
         }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google Sign-In error: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -59,33 +59,100 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
-          child: Card(
+          child: Container(
             margin: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 8),
-                  Text('Welcome to IrtzaLink', style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 16),
-                  TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email')),
-                  const SizedBox(height: 12),
-                  TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: _loading ? null : _submit,
-                    child: _loading ? const CircularProgressIndicator() : const Text('Sign In'),
+                  Text(
+                    'Welcome to IrtzaLink', 
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  TextButton(onPressed: () => context.go('/reset'), child: const Text('Forgot password?')),
-                  const Divider(height: 32),
-                  OutlinedButton.icon(onPressed: _loading ? null : _google, icon: const Icon(Icons.login), label: const Text('Sign in with Google')),
-                  const SizedBox(height: 12),
-                  TextButton(onPressed: () => context.go('/sign-up'), child: const Text("Don't have an account? Sign up")),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _email, 
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.grey,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _password, 
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.grey,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Sign In'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => context.go('/reset'), 
+                    child: const Text('Forgot password?', style: TextStyle(color: Colors.white70)),
+                  ),
+                  const Divider(height: 32, color: Colors.grey),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _loading ? null : _google, 
+                      icon: const Icon(Icons.login, color: Colors.white), 
+                      label: const Text('Sign in with Google', style: TextStyle(color: Colors.white)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => context.go('/sign-up'), 
+                    child: const Text("Don't have an account? Sign up", style: TextStyle(color: Colors.white70)),
+                  ),
                 ],
               ),
             ),
